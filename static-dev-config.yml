@@ -1,0 +1,25 @@
+# Static configuration
+api:
+  dashboard: true
+  insecure: true
+
+pilot:
+  token: <YOUR_TOKEN>
+
+log:
+  level: DEBUG
+
+experimental:
+  devPlugin:
+    goPath: /home/david/go/
+    moduleName: github.com/dkijkuit/azurejwttokenvalidation
+
+entryPoints:
+  http:
+    address: ":4000"
+    forwardedHeaders:
+      insecure: true
+
+providers:
+  file:
+    filename: dynamic-dev-config.yml

@@ -1,0 +1,31 @@
+# Dynamic configuration
+
+http:
+  routers:
+    my-router:
+      rule: Path(`/whoami`)
+      service: service-whoami
+      entryPoints:
+        - http
+      middlewares:
+        - azure-jwt-check
+
+  services:
+   service-whoami:
+      loadBalancer:
+        servers:
+          - url: http://127.0.0.1:5000
+  
+  middlewares:
+    azure-jwt-check:
+      plugin:
+        dev:
+          keysurl: "https://jwks.keys"
+          issuer: "https://issuer.test"
+          audience: 
+            - "audience"
+          roles:
+            - Test.Role.1
+            - Test.Role.2
+          matchallroles: true
+          loglevel: "DEBUG"
