@@ -8,7 +8,7 @@ http:
       entryPoints:
         - http
       middlewares:
-        - azure-jwt-check
+        - azad-jwt-validation
 
   services:
    service-whoami:
@@ -17,13 +17,13 @@ http:
           - url: http://127.0.0.1:5000
   
   middlewares:
-    azure-jwt-check:
+    azad-jwt-validation:
       plugin:
         dev:
           keysurl: "https://jwks.keys"
           issuer: "https://issuer.test"
           audience: 
-            - "audience"
+            - "audience1,audience2"
           roles:
             - Test.Role.1
             - Test.Role.2

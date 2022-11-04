@@ -11,8 +11,8 @@ log:
 
 experimental:
   devPlugin:
-    goPath: /home/david/go/
-    moduleName: github.com/dkijkuit/azurejwttokenvalidation
+    goPath: /home/t1agob/go/
+    moduleName: github.com/t1agob/azadjwtvalidation
 
 entryPoints:
   http:
