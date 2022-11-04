@@ -260,7 +260,9 @@ func (azureJwt *AzureJwtPlugin) VerifyToken(jwtToken *AzureJwt) error {
 }
 
 func (azureJwt *AzureJwtPlugin) validateClaims(parsedClaims *Claims) error {
-	if parsedClaims.Aud != azureJwt.config.Audience {
+
+	if !strings.Contains(azureJwt.config.Audience, parsedClaims.Aud) {
+		// if parsedClaims.Aud != azureJwt.config.Audience {
 		return errors.New("token audience is wrong")
 	}
 

@@ -37,6 +37,25 @@ func TestValidToken(t *testing.T) {
 	assert.Equal(t, azureJwtPlugin.config.Issuer, extractedToken.Payload.Iss)
 }
 
+func TestValidTokenWithMultipleAudiences(t *testing.T) {
+	azureJwtPlugin := AzureJwtPlugin{
+		config: &Config{
+			Issuer:   "random-issuer",
+			Audience: "audience1,audience2",
+			Roles:    []string{"test_role_1"},
+		},
+	}
+
+	expiresAt := time.Now().Add(time.Hour)
+	validToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, "audience1", azureJwtPlugin.config.Issuer)
+
+	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, validToken)
+
+	assert.NoError(t, err)
+	assert.Equal(t, azureJwtPlugin.config.Roles, extractedToken.Payload.Roles)
+	assert.Equal(t, azureJwtPlugin.config.Issuer, extractedToken.Payload.Iss)
+}
+
 func TestExpiredToken(t *testing.T) {
 	azureJwtPlugin := AzureJwtPlugin{
 		config: &Config{
@@ -67,6 +86,25 @@ func TestWrongAudienceToken(t *testing.T) {
 
 	expiresAt := time.Now().Add(time.Hour)
 	invalidToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, "wrong audience", azureJwtPlugin.config.Issuer)
+
+	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, invalidToken)
+
+	assert.EqualError(t, err, "token audience is wrong")
+	assert.Equal(t, azureJwtPlugin.config.Roles, extractedToken.Payload.Roles)
+	assert.Equal(t, azureJwtPlugin.config.Issuer, extractedToken.Payload.Iss)
+}
+
+func TestWrongAudienceInMultipleAudiences(t *testing.T) {
+	azureJwtPlugin := AzureJwtPlugin{
+		config: &Config{
+			Issuer:   "random-issuer",
+			Audience: "right-audience1,right-audience2",
+			Roles:    []string{"test_role_1"},
+		},
+	}
+
+	expiresAt := time.Now().Add(time.Hour)
+	invalidToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, "wrong-audience", azureJwtPlugin.config.Issuer)
 
 	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, invalidToken)
 
