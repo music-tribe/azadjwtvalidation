@@ -113,6 +113,25 @@ func TestWrongAudienceInMultipleAudiences(t *testing.T) {
 	assert.Equal(t, azureJwtPlugin.config.Issuer, extractedToken.Payload.Iss)
 }
 
+func TestCorrectAudienceInMultipleAudiences(t *testing.T) {
+	azureJwtPlugin := AzureJwtPlugin{
+		config: &Config{
+			Issuer:   "random-issuer",
+			Audience: "right-audience1,right-audience2",
+			Roles:    []string{"test_role_1"},
+		},
+	}
+
+	expiresAt := time.Now().Add(time.Hour)
+	invalidToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, "right-audience1", azureJwtPlugin.config.Issuer)
+
+	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, invalidToken)
+
+	assert.Equal(t, err, nil)
+	assert.Equal(t, azureJwtPlugin.config.Roles, extractedToken.Payload.Roles)
+	assert.Equal(t, azureJwtPlugin.config.Issuer, extractedToken.Payload.Iss)
+}
+
 func TestMissingRolesInToken(t *testing.T) {
 	azureJwtPlugin := AzureJwtPlugin{
 		config: &Config{
