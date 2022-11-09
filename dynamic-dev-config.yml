@@ -8,7 +8,7 @@ http:
       entryPoints:
         - http
       middlewares:
-        - azad-jwt-validation
+        - azadjwtvalidation
 
   services:
    service-whoami:
@@ -17,7 +17,7 @@ http:
           - url: http://127.0.0.1:5000
   
   middlewares:
-    azad-jwt-validation:
+    azadjwtvalidation:
       plugin:
         dev:
           keysurl: "https://jwks.keys"

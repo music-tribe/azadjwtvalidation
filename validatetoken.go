@@ -1,4 +1,4 @@
-package azurejwttokenvalidation
+package azadjwtvalidation
 
 import (
 	"context"
