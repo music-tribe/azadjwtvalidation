@@ -1,4 +1,4 @@
-module github.com/dkijkuit/azurejwttokenvalidation
+module github.com/music-tribe/azadjwtvalidation
 
 go 1.16
 
