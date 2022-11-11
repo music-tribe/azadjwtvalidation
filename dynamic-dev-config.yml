@@ -22,8 +22,7 @@ http:
         dev:
           keysurl: "https://jwks.keys"
           issuer: "https://issuer.test"
-          audience: 
-            - "audience1,audience2"
+          audience: "audience1,audience2"
           roles:
             - Test.Role.1
             - Test.Role.2
