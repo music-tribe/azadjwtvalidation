@@ -28,8 +28,7 @@ spec:
         azadjwtvalidation:
             keysurl: "https://contoso.b2clogin.com/contoso.onmicrosoft.com/b2c_1_signupsignin1/discovery/v2.0/keys"
             issuer: "https://contoso.b2clogin.com/eecc1921-e709-45c6-b5dc-0a92d28ae4b1/v2.0/"
-            audience: 
-                - "d304eaf9-e22f-48f5-b3cf-c03dcc5452ff,d14ce77d-5be7-437b-b165-16b57813ec4c"
+            audience: "d304eaf9-e22f-48f5-b3cf-c03dcc5452ff,d14ce77d-5be7-437b-b165-16b57813ec4c"
 ```
 
 ## Relevant links
