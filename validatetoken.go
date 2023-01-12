@@ -100,7 +100,7 @@ func (azureJwt *AzureJwtPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Requ
 		switch err.Error() {
 		case "no authorization header":
 			errMsg = "No token provided. Please use Authorization header to pass a valid token."
-		case "no bearer token":
+		case "not bearer auth scheme":
 			errMsg = "Token provided on Authorization header is not a bearer token. Please provide a valid bearer token."
 		case "invalid token format":
 			errMsg = "The format of the bearer token provided on Authorization header is invalid. Please provide a valid bearer token."
@@ -192,8 +192,8 @@ func (azureJwt *AzureJwtPlugin) ExtractToken(request *http.Request) (*AzureJwt, 
 	}
 	auth := authHeader[0]
 	if !strings.HasPrefix(auth, "Bearer ") {
-		fmt.Println("No bearer token")
-		return nil, errors.New("no bearer token")
+		fmt.Println("not bearer auth scheme")
+		return nil, errors.New("not bearer auth scheme")
 	}
 	parts := strings.Split(auth[7:], ".")
 	if len(parts) != 3 {

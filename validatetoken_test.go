@@ -104,7 +104,7 @@ func TestNotBearerToken(t *testing.T) {
 
 	extractedToken, err := createRequestWithAuthorizationHeaderButNotBearerToken(t, azureJwtPlugin, invalidToken)
 
-	assert.Equal(t, err.Error(), "no bearer token")
+	assert.Equal(t, err.Error(), "not bearer auth scheme")
 	assert.Nil(t, extractedToken)
 }
 
