@@ -98,7 +98,7 @@ func (azureJwt *AzureJwtPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Requ
 		errMsg := ""
 
 		switch err.Error() {
-		case "no header token":
+		case "no authorization header":
 			errMsg = "No token provided. Please use Authorization header to pass a valid token."
 		case "no bearer token":
 			errMsg = "Token provided on Authorization header is not a bearer token. Please provide a valid bearer token."
@@ -187,8 +187,8 @@ func verifyAndSetPublicKey(publicKey string) error {
 func (azureJwt *AzureJwtPlugin) ExtractToken(request *http.Request) (*AzureJwt, error) {
 	authHeader, ok := request.Header["Authorization"]
 	if !ok {
-		fmt.Println("No header token")
-		return nil, errors.New("no header token")
+		fmt.Println("No authorization header present")
+		return nil, errors.New("no authorization header")
 	}
 	auth := authHeader[0]
 	if !strings.HasPrefix(auth, "Bearer ") {
