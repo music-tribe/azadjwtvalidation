@@ -75,6 +75,55 @@ func TestExpiredToken(t *testing.T) {
 	assert.Equal(t, azureJwtPlugin.config.Issuer, extractedToken.Payload.Iss)
 }
 
+func TestMissingAuthorizationHeaderToken(t *testing.T) {
+	azureJwtPlugin := AzureJwtPlugin{
+		config: &Config{
+			Issuer:   "random-issuer",
+			Audience: "admin",
+			Roles:    []string{"test_role_1"},
+		},
+	}
+
+	extractedToken, err := createUnauthorizedHeaderMissingRequest(t, azureJwtPlugin)
+
+	assert.Equal(t, err.Error(), "no header token")
+	assert.Nil(t, extractedToken)
+}
+
+func TestNotBearerToken(t *testing.T) {
+	azureJwtPlugin := AzureJwtPlugin{
+		config: &Config{
+			Issuer:   "random-issuer",
+			Audience: "admin",
+			Roles:    []string{"test_role_1"},
+		},
+	}
+
+	expiresAt := time.Now().Add(-time.Hour)
+	invalidToken, _ := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer)
+
+	extractedToken, err := createUnauthorizedNotBearerTokenRequest(t, azureJwtPlugin, invalidToken)
+
+	assert.Equal(t, err.Error(), "no bearer token")
+	assert.Nil(t, extractedToken)
+}
+
+func TestInvalidTokenFormat(t *testing.T) {
+	azureJwtPlugin := AzureJwtPlugin{
+		config: &Config{
+			Issuer:   "random-issuer",
+			Audience: "admin",
+			Roles:    []string{"test_role_1"},
+		},
+	}
+
+	tokenWithInvalidFormat := "some_format"
+	extractedToken, err := createUnauthorizedInvalidBearerTokenRequest(t, azureJwtPlugin, tokenWithInvalidFormat)
+
+	assert.Equal(t, err.Error(), "invalid token format")
+	assert.Nil(t, extractedToken)
+}
+
 func TestWrongAudienceToken(t *testing.T) {
 	azureJwtPlugin := AzureJwtPlugin{
 		config: &Config{
@@ -199,6 +248,29 @@ func createRequestAndValidateToken(t *testing.T, azureJwtPlugin AzureJwtPlugin, 
 	assert.NoError(t, err)
 
 	err = azureJwtPlugin.ValidateToken(extractedToken)
+
+	return extractedToken, err
+}
+
+func createUnauthorizedHeaderMissingRequest(t *testing.T, azureJwtPlugin AzureJwtPlugin) (*AzureJwt, error) {
+	request := httptest.NewRequest("GET", "/testtoken", nil)
+	extractedToken, err := azureJwtPlugin.ExtractToken(request)
+
+	return extractedToken, err
+}
+
+func createUnauthorizedNotBearerTokenRequest(t *testing.T, azureJwtPlugin AzureJwtPlugin, token string) (*AzureJwt, error) {
+	request := httptest.NewRequest("GET", "/testtoken", nil)
+	request.Header.Set("Authorization", token)
+	extractedToken, err := azureJwtPlugin.ExtractToken(request)
+
+	return extractedToken, err
+}
+
+func createUnauthorizedInvalidBearerTokenRequest(t *testing.T, azureJwtPlugin AzureJwtPlugin, token string) (*AzureJwt, error) {
+	request := httptest.NewRequest("GET", "/testtoken", nil)
+	request.Header.Set("Authorization", "Bearer "+token)
+	extractedToken, err := azureJwtPlugin.ExtractToken(request)
 
 	return extractedToken, err
 }
