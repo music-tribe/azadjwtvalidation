@@ -1,3 +1,6 @@
+[![Go](https://github.com/music-tribe/azadjwtvalidation/actions/workflows/go.yml/badge.svg)](https://github.com/music-tribe/azadjwtvalidation/actions/workflows/go.yml)
+[![CodeQL](https://github.com/music-tribe/azadjwtvalidation/actions/workflows/codeql.yml/badge.svg)](https://github.com/music-tribe/azadjwtvalidation/actions/workflows/codeql.yml)
+
 # Azure Active Directory JWT validation
 
 > This project is a Traefik plugin based on the work of [dkijkuit](https://github.com/dkijkuit/azurejwttokenvalidation). 
