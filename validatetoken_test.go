@@ -108,6 +108,25 @@ func TestNotBearerToken(t *testing.T) {
 	assert.Nil(t, extractedToken)
 }
 
+func TestInvalidIssuer(t *testing.T) {
+	azureJwtPlugin := AzureJwtPlugin{
+		config: &Config{
+			Issuer:   "correct-issuer",
+			Audience: "admin",
+			Roles:    []string{"test_role_1"},
+		},
+	}
+
+	expiresAt := time.Now().Add(time.Hour)
+	token, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, "invalid-issuer")
+
+	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, token)
+
+	assert.Equal(t, azureJwtPlugin.config.Roles, extractedToken.Payload.Roles)
+	assert.Equal(t, "invalid-issuer", extractedToken.Payload.Iss)
+	assert.Error(t, err, "wrong issuer")
+}
+
 func TestInvalidTokenFormat(t *testing.T) {
 	azureJwtPlugin := AzureJwtPlugin{
 		config: &Config{
