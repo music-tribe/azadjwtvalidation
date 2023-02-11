@@ -56,6 +56,24 @@ func TestValidTokenFromDifferentTenant(t *testing.T) {
 	assert.Error(t, err, "invalid public key")
 }
 
+func TestInvalidKeysUrl(t *testing.T) {
+	azureJwtPlugin := AzureJwtPlugin{
+		config: &Config{
+			Issuer:   "random-issuer",
+			Audience: "admin",
+			Roles:    []string{"test_role_1"},
+			KeysUrl:  "https://invalid-url",
+		},
+	}
+
+	expiresAt := time.Now().Add(time.Hour)
+	validToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "config_rsa")
+
+	_, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, validToken)
+
+	assert.Error(t, err, "failed to load public key from:https://invalid-url")
+}
+
 func TestValidToken(t *testing.T) {
 	azureJwtPlugin := AzureJwtPlugin{
 		config: &Config{
@@ -295,9 +313,14 @@ func TestNoRolesInToken(t *testing.T) {
 }
 
 func createRequestAndValidateToken(t *testing.T, azureJwtPlugin AzureJwtPlugin, publicKey *rsa.PublicKey, token string) (*AzureJwt, error) {
-	azureJwtPlugin.GetPublicKeys(&Config{
+	err := azureJwtPlugin.GetPublicKeys(&Config{
 		PublicKey: string(PublicKeyToBytes(publicKey)),
+		KeysUrl:   azureJwtPlugin.config.KeysUrl,
 	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	request := httptest.NewRequest("GET", "/testtoken", nil)
 	request.Header.Set("Authorization", "Bearer "+token)

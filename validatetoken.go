@@ -121,12 +121,12 @@ func (azureJwt *AzureJwtPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Requ
 
 func (azureJwt *AzureJwtPlugin) scheduleUpdateKeys(config *Config) {
 	for {
-		azureJwt.GetPublicKeys(config)
+		_ = azureJwt.GetPublicKeys(config)
 		time.Sleep(15 * time.Minute)
 	}
 }
 
-func (azureJwt *AzureJwtPlugin) GetPublicKeys(config *Config) {
+func (azureJwt *AzureJwtPlugin) GetPublicKeys(config *Config) error {
 	verifyAndSetPublicKey(config.PublicKey)
 
 	if strings.TrimSpace(config.KeysUrl) != "" {
@@ -135,6 +135,7 @@ func (azureJwt *AzureJwtPlugin) GetPublicKeys(config *Config) {
 
 		if err != nil {
 			LoggerWARN.Println("failed to load public key from:", config.KeysUrl)
+			return fmt.Errorf("failed to load public key from:%v", config.KeysUrl)
 		} else {
 			json.NewDecoder(resp.Body).Decode(&body)
 			for _, bodykey := range body["keys"].([]interface{}) {
@@ -155,6 +156,8 @@ func (azureJwt *AzureJwtPlugin) GetPublicKeys(config *Config) {
 			}
 		}
 	}
+
+	return nil
 }
 
 func verifyAndSetPublicKey(publicKey string) error {
