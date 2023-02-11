@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"math/big"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -18,6 +19,43 @@ type JwtClaim struct {
 	jwt.StandardClaims
 }
 
+func TestInvalidPublicKey(t *testing.T) {
+	azureJwtPlugin := AzureJwtPlugin{
+		config: &Config{
+			Issuer:   "random-issuer",
+			Audience: "admin",
+			Roles:    []string{"test_role_1"},
+			KeysUrl:  "",
+		},
+	}
+
+	expiresAt := time.Now().Add(time.Hour)
+	validToken, _ := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "config_rsa")
+	invalidPublicKey := rsa.PublicKey{N: big.NewInt(0), E: 0}
+
+	_, err := createRequestAndValidateToken(t, azureJwtPlugin, &invalidPublicKey, validToken)
+
+	assert.Error(t, err, "invalid public key")
+}
+
+func TestValidTokenFromDifferentTenant(t *testing.T) {
+	azureJwtPlugin := AzureJwtPlugin{
+		config: &Config{
+			Issuer:   "random-issuer",
+			Audience: "admin",
+			Roles:    []string{"test_role_1"},
+		},
+	}
+
+	expiresAt := time.Now().Add(time.Hour)
+	_, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "config_rsa")
+	tokenFromOtherTenant, _ := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "other_config_rsa")
+
+	_, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, tokenFromOtherTenant)
+
+	assert.Error(t, err, "invalid public key")
+}
+
 func TestValidToken(t *testing.T) {
 	azureJwtPlugin := AzureJwtPlugin{
 		config: &Config{
@@ -28,7 +66,7 @@ func TestValidToken(t *testing.T) {
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
-	validToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer)
+	validToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "config_rsa")
 
 	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, validToken)
 
@@ -47,7 +85,7 @@ func TestValidTokenWithMultipleAudiences(t *testing.T) {
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
-	validToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, "audience1", azureJwtPlugin.config.Issuer)
+	validToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, "audience1", azureJwtPlugin.config.Issuer, "config_rsa")
 
 	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, validToken)
 
@@ -66,7 +104,7 @@ func TestExpiredToken(t *testing.T) {
 	}
 
 	expiresAt := time.Now().Add(-time.Hour)
-	invalidToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer)
+	invalidToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "config_rsa")
 
 	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, invalidToken)
 
@@ -100,7 +138,7 @@ func TestNotBearerToken(t *testing.T) {
 	}
 
 	expiresAt := time.Now().Add(-time.Hour)
-	invalidToken, _ := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer)
+	invalidToken, _ := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "config_rsa")
 
 	extractedToken, err := createRequestWithAuthorizationHeaderButNotBearerToken(t, azureJwtPlugin, invalidToken)
 
@@ -118,7 +156,7 @@ func TestInvalidIssuer(t *testing.T) {
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
-	token, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, "invalid-issuer")
+	token, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, "invalid-issuer", "config_rsa")
 
 	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, token)
 
@@ -153,7 +191,7 @@ func TestWrongAudienceToken(t *testing.T) {
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
-	invalidToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, "wrong audience", azureJwtPlugin.config.Issuer)
+	invalidToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, "wrong audience", azureJwtPlugin.config.Issuer, "config_rsa")
 
 	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, invalidToken)
 
@@ -172,7 +210,7 @@ func TestWrongAudienceInMultipleAudiences(t *testing.T) {
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
-	invalidToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, "wrong-audience", azureJwtPlugin.config.Issuer)
+	invalidToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, "wrong-audience", azureJwtPlugin.config.Issuer, "config_rsa")
 
 	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, invalidToken)
 
@@ -191,7 +229,7 @@ func TestCorrectAudienceInMultipleAudiences(t *testing.T) {
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
-	invalidToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, "right-audience1", azureJwtPlugin.config.Issuer)
+	invalidToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, "right-audience1", azureJwtPlugin.config.Issuer, "config_rsa")
 
 	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, invalidToken)
 
@@ -210,7 +248,7 @@ func TestMissingRolesInToken(t *testing.T) {
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
-	validToken, publicKey := generateTestToken(expiresAt, []string{"test_role_2"}, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer)
+	validToken, publicKey := generateTestToken(expiresAt, []string{"test_role_2"}, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "config_rsa")
 
 	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, validToken)
 
@@ -230,7 +268,7 @@ func TestOneRoleInToken(t *testing.T) {
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
-	validToken, publicKey := generateTestToken(expiresAt, []string{"test_role_2"}, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer)
+	validToken, publicKey := generateTestToken(expiresAt, []string{"test_role_2"}, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "config_rsa")
 
 	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, validToken)
 
@@ -248,7 +286,7 @@ func TestNoRolesInToken(t *testing.T) {
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
-	validToken, publicKey := generateTestToken(expiresAt, nil, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer)
+	validToken, publicKey := generateTestToken(expiresAt, nil, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "config_rsa")
 
 	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, validToken)
 
@@ -294,7 +332,7 @@ func createRequestWithInvalidBearerTokenFormat(t *testing.T, azureJwtPlugin Azur
 	return extractedToken, err
 }
 
-func generateTestToken(expiresAt time.Time, roles []string, audience string, issuer string) (testtoken string, publicKey *rsa.PublicKey) {
+func generateTestToken(expiresAt time.Time, roles []string, audience string, issuer string, publicKeyId string) (testtoken string, publicKey *rsa.PublicKey) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		panic(err)
@@ -310,7 +348,7 @@ func generateTestToken(expiresAt time.Time, roles []string, audience string, iss
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, testClaims)
-	token.Header["kid"] = "config_rsa"
+	token.Header["kid"] = publicKeyId
 
 	signedString, errSignedString := token.SignedString(privateKey)
 

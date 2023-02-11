@@ -238,7 +238,7 @@ func (azureJwt *AzureJwtPlugin) ValidateToken(token *AzureJwt) error {
 	hash := sha256.Sum256(token.RawToken)
 
 	if _, ok := rsakeys[token.Header.Kid]; !ok {
-		return errors.New("public key not found")
+		return errors.New("invalid public key")
 	}
 
 	err := rsa.VerifyPKCS1v15(rsakeys[token.Header.Kid], crypto.SHA256, hash[:], token.Signature)
