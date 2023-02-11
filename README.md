@@ -1,5 +1,6 @@
 [![Go](https://github.com/music-tribe/azadjwtvalidation/actions/workflows/go.yml/badge.svg)](https://github.com/music-tribe/azadjwtvalidation/actions/workflows/go.yml)
 [![CodeQL](https://github.com/music-tribe/azadjwtvalidation/actions/workflows/codeql.yml/badge.svg)](https://github.com/music-tribe/azadjwtvalidation/actions/workflows/codeql.yml)
+[![codecov](https://codecov.io/gh/music-tribe/azadjwtvalidation/branch/master/graph/badge.svg?token=GCEU8TO2WY)](https://codecov.io/gh/music-tribe/azadjwtvalidation)
 
 # Azure Active Directory JWT validation
 
