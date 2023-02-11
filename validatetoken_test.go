@@ -312,6 +312,24 @@ func TestNoRolesInToken(t *testing.T) {
 	assert.Equal(t, azureJwtPlugin.config.Issuer, extractedToken.Payload.Iss)
 }
 
+func TestRolesInConfigButNotInToken(t *testing.T) {
+	azureJwtPlugin := AzureJwtPlugin{
+		config: &Config{
+			Issuer:   "random-issuer",
+			Audience: "tenant",
+			Roles:    []string{"test_role_1", "test_role_2"},
+		},
+	}
+
+	expiresAt := time.Now().Add(time.Hour)
+	validToken, publicKey := generateTestToken(expiresAt, nil, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "config_rsa")
+
+	extractedToken, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, validToken)
+
+	assert.Error(t, err, "missing correct role")
+	assert.NotEqual(t, azureJwtPlugin.config.Roles, extractedToken.Payload.Roles)
+}
+
 func createRequestAndValidateToken(t *testing.T, azureJwtPlugin AzureJwtPlugin, publicKey *rsa.PublicKey, token string) (*AzureJwt, error) {
 	err := azureJwtPlugin.GetPublicKeys(&Config{
 		PublicKey: string(PublicKeyToBytes(publicKey)),
