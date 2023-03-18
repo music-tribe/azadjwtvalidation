@@ -92,7 +92,7 @@ func (azureJwt *AzureJwtPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Requ
 			LoggerDEBUG.Println("Accepted request")
 			tokenValid = true
 		} else {
-			LoggerDEBUG.Println(valerr)
+			LoggerWARN.Println(valerr)
 		}
 	} else {
 		errMsg := ""
@@ -108,13 +108,14 @@ func (azureJwt *AzureJwtPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Requ
 			errMsg = "The token provided is invalid. Please provide a valid bearer token."
 		}
 
+		LoggerWARN.Println(errMsg)
 		http.Error(rw, errMsg, http.StatusUnauthorized)
-		LoggerDEBUG.Println(err)
 	}
 
 	if tokenValid {
 		azureJwt.next.ServeHTTP(rw, req)
 	} else {
+		LoggerWARN.Println("The token you provided is not valid. Please provide a valid token.")
 		http.Error(rw, "The token you provided is not valid. Please provide a valid token.", http.StatusForbidden)
 	}
 }
@@ -148,7 +149,7 @@ func (azureJwt *AzureJwtPlugin) GetPublicKeys(config *Config) error {
 
 				b, err := base64.RawURLEncoding.DecodeString(e)
 				if err != nil {
-					log.Fatalf("Error parsing key E: %v", err)
+					LoggerWARN.Println("Error parsing key E:", err)
 				}
 
 				rsakey.E = int(new(big.Int).SetBytes(b).Uint64())
@@ -268,7 +269,7 @@ func (azureJwt *AzureJwtPlugin) VerifyToken(jwtToken *AzureJwt) error {
 	}
 
 	if tokenExpiration < time.Now().Unix() {
-		LoggerDEBUG.Println("Token has expired", time.Unix(tokenExpiration, 0))
+		LoggerWARN.Println("Token has expired", time.Unix(tokenExpiration, 0))
 		return errors.New("token is expired")
 	}
 
@@ -311,7 +312,7 @@ func (azureJwt *AzureJwtPlugin) validateClaims(parsedClaims *Claims) error {
 			}
 
 			if !allRolesValid {
-				LoggerDEBUG.Println("missing correct role, found: " + strings.Join(parsedClaims.Roles, ",") + ", expected: " + strings.Join(azureJwt.config.Roles, ","))
+				LoggerWARN.Println("missing correct role, found: " + strings.Join(parsedClaims.Roles, ",") + ", expected: " + strings.Join(azureJwt.config.Roles, ","))
 				return errors.New("missing correct role")
 			}
 		}
