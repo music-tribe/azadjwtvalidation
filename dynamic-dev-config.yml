@@ -28,3 +28,7 @@ http:
             - Test.Role.2
           matchallroles: true
           loglevel: "DEBUG"
+          logheaders: true
+          filterheaders: 
+            - X-Request-Id
+            - Host
