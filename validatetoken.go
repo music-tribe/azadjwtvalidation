@@ -361,7 +361,7 @@ func LogHttp(logger *log.Logger, message string, logHeaders bool, headers []stri
 
 	jsonStr, err := json.Marshal(logPayload)
 
-	if err == nil {
+	if err != nil {
 		logger.Printf("Error marshaling log payload to JSON: %v\n", err)
 		return
 	}
