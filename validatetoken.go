@@ -359,6 +359,11 @@ func LogHttp(logger *log.Logger, message string, logHeaders bool, headers []stri
 	logPayload["Method"] = request.Method
 	logPayload["Error"] = message
 
-	jsonStr, _ := json.Marshal(logPayload)
+	jsonStr, err := json.Marshal(logPayload)
+
+	if err == nil {
+		logger.Printf("Error marshaling log payload to JSON: %v\n", err)
+	}
+
 	logger.Println(string(jsonStr))
 }
