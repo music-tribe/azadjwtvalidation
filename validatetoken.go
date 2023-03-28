@@ -31,8 +31,7 @@ type Config struct {
 	Roles         []string
 	MatchAllRoles bool
 	LogLevel      string
-	LogHeaders    bool
-	FilterHeaders []string
+	LogHeaders    []string
 }
 
 type AzureJwtPlugin struct {
@@ -111,14 +110,14 @@ func (azureJwt *AzureJwtPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Requ
 			errMsg = "The token provided is invalid. Please provide a valid bearer token."
 		}
 
-		LogHttp(LoggerWARN, errMsg, azureJwt.config.LogHeaders, azureJwt.config.FilterHeaders, http.StatusUnauthorized, req)
+		LogHttp(LoggerWARN, errMsg, azureJwt.config.LogHeaders, http.StatusUnauthorized, req)
 		http.Error(rw, errMsg, http.StatusUnauthorized)
 	}
 
 	if tokenValid {
 		azureJwt.next.ServeHTTP(rw, req)
 	} else {
-		LogHttp(LoggerWARN, "The token you provided is not valid. Please provide a valid token.", azureJwt.config.LogHeaders, azureJwt.config.FilterHeaders, http.StatusForbidden, req)
+		LogHttp(LoggerWARN, "The token you provided is not valid. Please provide a valid token.", azureJwt.config.LogHeaders, http.StatusForbidden, req)
 		http.Error(rw, "The token you provided is not valid. Please provide a valid token.", http.StatusForbidden)
 	}
 }
@@ -339,19 +338,11 @@ func (claims *Claims) isValidForRole(configRole string) bool {
 	return false
 }
 
-func LogHttp(logger *log.Logger, message string, logHeaders bool, headers []string, statusCode int, request *http.Request) {
+func LogHttp(logger *log.Logger, message string, headers []string, statusCode int, request *http.Request) {
 	var logPayload = make(map[string]string)
 
-	if logHeaders {
-		if headers != nil {
-			for _, header := range headers {
-				logPayload[header] = request.Header.Get(header)
-			}
-		} else {
-			for header, value := range request.Header {
-				logPayload[header] = strings.Join(value, ",")
-			}
-		}
+	for _, header := range headers {
+		logPayload[header] = request.Header.Get(header)
 	}
 
 	logPayload["StatusCode"] = strconv.Itoa(statusCode)

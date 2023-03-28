@@ -333,28 +333,6 @@ func TestRolesInConfigButNotInToken(t *testing.T) {
 	assert.NotEqual(t, azureJwtPlugin.config.Roles, extractedToken.Payload.Roles)
 }
 
-func TestHttpErrorLoggingWithLogHeaderEnabled(t *testing.T) {
-	// Set up a buffer to capture the log output
-	var buf bytes.Buffer
-	testLogger := log.New(&buf, "", log.LstdFlags)
-
-	// Set up a request with headers
-	request := httptest.NewRequest("GET", "/testtoken", nil)
-	request.Header.Set("Authorization", "dummytoken")
-	request.Header.Set("X-Request-Id", "1234")
-
-	// Log the error
-	LogHttp(testLogger, "test error message", true, nil, http.StatusForbidden, request)
-
-	// Check the output
-	assert.Contains(t, buf.String(), "\"Error\":\"test error message\"")
-	assert.Contains(t, buf.String(), "\"Authorization\":\"dummytoken\"")
-	assert.Contains(t, buf.String(), "\"X-Request-Id\":\"1234\"")
-	assert.Contains(t, buf.String(), "\"Method\":\"GET\"")
-	assert.Contains(t, buf.String(), "\"StatusCode\":\"403\"")
-	assert.Contains(t, buf.String(), "\"Url\":\"/testtoken\"")
-}
-
 func TestHttpErrorLoggingWithLogHeaderDisabled(t *testing.T) {
 	// Set up a buffer to capture the log output
 	var buf bytes.Buffer
@@ -366,7 +344,7 @@ func TestHttpErrorLoggingWithLogHeaderDisabled(t *testing.T) {
 	request.Header.Set("X-Request-Id", "1234")
 
 	// Log the error
-	LogHttp(testLogger, "test error message", false, nil, http.StatusForbidden, request)
+	LogHttp(testLogger, "test error message", nil, http.StatusForbidden, request)
 
 	// Check the output
 	assert.Contains(t, buf.String(), "\"Error\":\"test error message\"")
@@ -377,7 +355,7 @@ func TestHttpErrorLoggingWithLogHeaderDisabled(t *testing.T) {
 	assert.Contains(t, buf.String(), "\"Url\":\"/testtoken\"")
 }
 
-func TestHttpErrorLoggingWithLogHeaderEnabledButFiltered(t *testing.T) {
+func TestHttpErrorLoggingWithLogHeaderEnabled(t *testing.T) {
 	// Set up a buffer to capture the log output
 	var buf bytes.Buffer
 	testLogger := log.New(&buf, "", log.LstdFlags)
@@ -387,17 +365,17 @@ func TestHttpErrorLoggingWithLogHeaderEnabledButFiltered(t *testing.T) {
 	request.Header.Set("Authorization", "dummytoken")
 	request.Header.Set("X-Request-Id", "1234")
 
-	// Set list of headers to filter
-	filteredHeaders := []string{"Authorization"}
+	// Set list of headers to log
+	headers := []string{"X-Request-Id"}
 
 	// Log the error
-	LogHttp(testLogger, "test error message", true, filteredHeaders, http.StatusForbidden, request)
+	LogHttp(testLogger, "test error message", headers, http.StatusForbidden, request)
 
 	// Check the output
 	log.Println(buf.String())
 	assert.Contains(t, buf.String(), "\"Error\":\"test error message\"")
-	assert.Contains(t, buf.String(), "\"Authorization\":\"dummytoken\"")
-	assert.NotContains(t, buf.String(), "\"X-Request-Id\":\"1234\"")
+	assert.NotContains(t, buf.String(), "\"Authorization\":\"dummytoken\"")
+	assert.Contains(t, buf.String(), "\"X-Request-Id\":\"1234\"")
 	assert.Contains(t, buf.String(), "\"Method\":\"GET\"")
 	assert.Contains(t, buf.String(), "\"StatusCode\":\"403\"")
 	assert.Contains(t, buf.String(), "\"Url\":\"/testtoken\"")

@@ -10,8 +10,7 @@ testData:
   roles: 
     - Test.Role.1
     - Test.Role.2
-  logheaders: true
-  filterheaders:
+  logheaders:
     - X-Request-Id
     - Host
 type: middleware
