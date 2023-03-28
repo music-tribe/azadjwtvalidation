@@ -16,6 +16,7 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -30,6 +31,7 @@ type Config struct {
 	Roles         []string
 	MatchAllRoles bool
 	LogLevel      string
+	LogHeaders    []string
 }
 
 type AzureJwtPlugin struct {
@@ -92,7 +94,7 @@ func (azureJwt *AzureJwtPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Requ
 			LoggerDEBUG.Println("Accepted request")
 			tokenValid = true
 		} else {
-			LoggerDEBUG.Println(valerr)
+			LoggerWARN.Println(valerr)
 		}
 	} else {
 		errMsg := ""
@@ -108,13 +110,14 @@ func (azureJwt *AzureJwtPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Requ
 			errMsg = "The token provided is invalid. Please provide a valid bearer token."
 		}
 
+		LogHttp(LoggerWARN, errMsg, azureJwt.config.LogHeaders, http.StatusUnauthorized, req)
 		http.Error(rw, errMsg, http.StatusUnauthorized)
-		LoggerDEBUG.Println(err)
 	}
 
 	if tokenValid {
 		azureJwt.next.ServeHTTP(rw, req)
 	} else {
+		LogHttp(LoggerWARN, "The token you provided is not valid. Please provide a valid token.", azureJwt.config.LogHeaders, http.StatusForbidden, req)
 		http.Error(rw, "The token you provided is not valid. Please provide a valid token.", http.StatusForbidden)
 	}
 }
@@ -148,7 +151,7 @@ func (azureJwt *AzureJwtPlugin) GetPublicKeys(config *Config) error {
 
 				b, err := base64.RawURLEncoding.DecodeString(e)
 				if err != nil {
-					log.Fatalf("Error parsing key E: %v", err)
+					LoggerWARN.Println("Error parsing key E:", err)
 				}
 
 				rsakey.E = int(new(big.Int).SetBytes(b).Uint64())
@@ -268,7 +271,7 @@ func (azureJwt *AzureJwtPlugin) VerifyToken(jwtToken *AzureJwt) error {
 	}
 
 	if tokenExpiration < time.Now().Unix() {
-		LoggerDEBUG.Println("Token has expired", time.Unix(tokenExpiration, 0))
+		LoggerWARN.Println("Token has expired", time.Unix(tokenExpiration, 0))
 		return errors.New("token is expired")
 	}
 
@@ -311,7 +314,7 @@ func (azureJwt *AzureJwtPlugin) validateClaims(parsedClaims *Claims) error {
 			}
 
 			if !allRolesValid {
-				LoggerDEBUG.Println("missing correct role, found: " + strings.Join(parsedClaims.Roles, ",") + ", expected: " + strings.Join(azureJwt.config.Roles, ","))
+				LoggerWARN.Println("missing correct role, found: " + strings.Join(parsedClaims.Roles, ",") + ", expected: " + strings.Join(azureJwt.config.Roles, ","))
 				return errors.New("missing correct role")
 			}
 		}
@@ -333,4 +336,26 @@ func (claims *Claims) isValidForRole(configRole string) bool {
 	}
 
 	return false
+}
+
+func LogHttp(logger *log.Logger, message string, headers []string, statusCode int, request *http.Request) {
+	var logPayload = make(map[string]string)
+
+	for _, header := range headers {
+		logPayload[header] = request.Header.Get(header)
+	}
+
+	logPayload["StatusCode"] = strconv.Itoa(statusCode)
+	logPayload["Url"] = request.URL.String()
+	logPayload["Method"] = request.Method
+	logPayload["Error"] = message
+
+	jsonStr, err := json.Marshal(logPayload)
+
+	if err != nil {
+		logger.Printf("Error marshaling log payload to JSON: %v\n", err)
+		return
+	}
+
+	logger.Println(string(jsonStr))
 }

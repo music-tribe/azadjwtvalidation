@@ -1,11 +1,14 @@
 package azadjwtvalidation
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"log"
 	"math/big"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -328,6 +331,54 @@ func TestRolesInConfigButNotInToken(t *testing.T) {
 
 	assert.Error(t, err, "missing correct role")
 	assert.NotEqual(t, azureJwtPlugin.config.Roles, extractedToken.Payload.Roles)
+}
+
+func TestHttpErrorLoggingWithLogHeaderDisabled(t *testing.T) {
+	// Set up a buffer to capture the log output
+	var buf bytes.Buffer
+	testLogger := log.New(&buf, "", log.LstdFlags)
+
+	// Set up a request with headers
+	request := httptest.NewRequest("GET", "/testtoken", nil)
+	request.Header.Set("Authorization", "dummytoken")
+	request.Header.Set("X-Request-Id", "1234")
+
+	// Log the error
+	LogHttp(testLogger, "test error message", nil, http.StatusForbidden, request)
+
+	// Check the output
+	assert.Contains(t, buf.String(), "\"Error\":\"test error message\"")
+	assert.NotContains(t, buf.String(), "\"Authorization\":\"dummytoken\"")
+	assert.NotContains(t, buf.String(), "\"X-Request-Id\":\"1234\"")
+	assert.Contains(t, buf.String(), "\"Method\":\"GET\"")
+	assert.Contains(t, buf.String(), "\"StatusCode\":\"403\"")
+	assert.Contains(t, buf.String(), "\"Url\":\"/testtoken\"")
+}
+
+func TestHttpErrorLoggingWithLogHeaderEnabled(t *testing.T) {
+	// Set up a buffer to capture the log output
+	var buf bytes.Buffer
+	testLogger := log.New(&buf, "", log.LstdFlags)
+
+	// Set up a request with headers
+	request := httptest.NewRequest("GET", "/testtoken", nil)
+	request.Header.Set("Authorization", "dummytoken")
+	request.Header.Set("X-Request-Id", "1234")
+
+	// Set list of headers to log
+	headers := []string{"X-Request-Id"}
+
+	// Log the error
+	LogHttp(testLogger, "test error message", headers, http.StatusForbidden, request)
+
+	// Check the output
+	log.Println(buf.String())
+	assert.Contains(t, buf.String(), "\"Error\":\"test error message\"")
+	assert.NotContains(t, buf.String(), "\"Authorization\":\"dummytoken\"")
+	assert.Contains(t, buf.String(), "\"X-Request-Id\":\"1234\"")
+	assert.Contains(t, buf.String(), "\"Method\":\"GET\"")
+	assert.Contains(t, buf.String(), "\"StatusCode\":\"403\"")
+	assert.Contains(t, buf.String(), "\"Url\":\"/testtoken\"")
 }
 
 func createRequestAndValidateToken(t *testing.T, azureJwtPlugin AzureJwtPlugin, publicKey *rsa.PublicKey, token string) (*AzureJwt, error) {
