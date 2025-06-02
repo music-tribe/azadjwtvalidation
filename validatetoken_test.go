@@ -59,6 +59,7 @@ func TestValidTokenFromDifferentTenant(t *testing.T) {
 	assert.Error(t, err, "invalid public key")
 }
 
+// Invalid url doesn't exist
 func TestInvalidKeysUrl(t *testing.T) {
 	azureJwtPlugin := AzureJwtPlugin{
 		config: &Config{
@@ -75,6 +76,25 @@ func TestInvalidKeysUrl(t *testing.T) {
 	_, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, validToken)
 
 	assert.Error(t, err, "failed to load public key from:https://invalid-url")
+}
+
+// Invalid url exists but is incorrect
+func TestIncorrectKeysUrl(t *testing.T) {
+	azureJwtPlugin := AzureJwtPlugin{
+		config: &Config{
+			Issuer:   "random-issuer",
+			Audience: "admin",
+			Roles:    []string{"test_role_1"},
+			KeysUrl:  "https://google.com",
+		},
+	}
+
+	expiresAt := time.Now().Add(time.Hour)
+	validToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "config_rsa")
+
+	_, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, validToken)
+
+	assert.Error(t, err, "failed to load public key. No keys found from:https://google.com")
 }
 
 func TestValidToken(t *testing.T) {

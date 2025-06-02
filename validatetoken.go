@@ -133,7 +133,7 @@ func (azureJwt *AzureJwtPlugin) GetPublicKeys(config *Config) error {
 	verifyAndSetPublicKey(config.PublicKey)
 
 	if strings.TrimSpace(config.KeysUrl) != "" {
-		var body map[string]interface{}
+		var body JWKSet
 		resp, err := http.Get(config.KeysUrl)
 
 		if err != nil {
@@ -141,12 +141,17 @@ func (azureJwt *AzureJwtPlugin) GetPublicKeys(config *Config) error {
 			return fmt.Errorf("failed to load public key from:%v", config.KeysUrl)
 		} else {
 			json.NewDecoder(resp.Body).Decode(&body)
-			for _, bodykey := range body["keys"].([]interface{}) {
-				key := bodykey.(map[string]interface{})
-				kid := key["kid"].(string)
-				e := key["e"].(string)
+			keys := body.Keys
+
+			if len(keys) == 0 {
+				LoggerWARN.Println("failed to load public key. No keys found from:", config.KeysUrl)
+				return fmt.Errorf("failed to load public key. No keys found from:%v", config.KeysUrl)
+			}
+			for _, key := range keys {
+				kid := key.Kid
+				e := key.E
 				rsakey := new(rsa.PublicKey)
-				number, _ := base64.RawURLEncoding.DecodeString(key["n"].(string))
+				number, _ := base64.RawURLEncoding.DecodeString(key.N)
 				rsakey.N = new(big.Int).SetBytes(number)
 
 				b, err := base64.RawURLEncoding.DecodeString(e)
