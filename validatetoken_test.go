@@ -116,6 +116,25 @@ func TestValidToken(t *testing.T) {
 	assert.Equal(t, azureJwtPlugin.config.Issuer, extractedToken.Payload.Iss)
 }
 
+func TestInValidTokenWhenNoPublicKeys(t *testing.T) {
+	azureJwtPlugin := AzureJwtPlugin{
+		config: &Config{
+			Issuer:   "random-issuer",
+			Audience: "admin",
+			Roles:    []string{"test_role_1"},
+			KeysUrl:  "https://google.com",
+		},
+	}
+
+	expiresAt := time.Now().Add(time.Hour)
+	validToken, _ := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "config_rsa")
+
+	_, err := createRequestAndValidateTokenWithNoPublicKeys(t, azureJwtPlugin, validToken)
+
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "invalid public key")
+}
+
 func TestValidTokenWithMultipleAudiences(t *testing.T) {
 	azureJwtPlugin := AzureJwtPlugin{
 		config: &Config{
@@ -411,6 +430,17 @@ func createRequestAndValidateToken(t *testing.T, azureJwtPlugin AzureJwtPlugin, 
 		return nil, err
 	}
 
+	request := httptest.NewRequest("GET", "/testtoken", nil)
+	request.Header.Set("Authorization", "Bearer "+token)
+	extractedToken, err := azureJwtPlugin.ExtractToken(request)
+	assert.NoError(t, err)
+
+	err = azureJwtPlugin.ValidateToken(extractedToken)
+
+	return extractedToken, err
+}
+
+func createRequestAndValidateTokenWithNoPublicKeys(t *testing.T, azureJwtPlugin AzureJwtPlugin, token string) (*AzureJwt, error) {
 	request := httptest.NewRequest("GET", "/testtoken", nil)
 	request.Header.Set("Authorization", "Bearer "+token)
 	extractedToken, err := azureJwtPlugin.ExtractToken(request)
