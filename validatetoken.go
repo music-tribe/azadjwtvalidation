@@ -37,6 +37,7 @@ type Config struct {
 type AzureJwtPlugin struct {
 	next   http.Handler
 	config *Config
+	client *http.Client
 }
 
 var (
@@ -76,6 +77,9 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 	plugin := &AzureJwtPlugin{
 		next:   next,
 		config: config,
+		client: &http.Client{
+			Timeout: time.Second * 10,
+		},
 	}
 
 	go plugin.scheduleUpdateKeys(config)
@@ -134,7 +138,7 @@ func (azureJwt *AzureJwtPlugin) GetPublicKeys(config *Config) error {
 
 	if strings.TrimSpace(config.KeysUrl) != "" {
 		var body JWKSet
-		resp, err := http.Get(config.KeysUrl)
+		resp, err := azureJwt.client.Get(config.KeysUrl)
 
 		if err != nil {
 			LoggerWARN.Println("failed to load public key from:", config.KeysUrl)

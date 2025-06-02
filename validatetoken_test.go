@@ -30,6 +30,7 @@ func TestInvalidPublicKey(t *testing.T) {
 			Roles:    []string{"test_role_1"},
 			KeysUrl:  "",
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -48,6 +49,7 @@ func TestValidTokenFromDifferentTenant(t *testing.T) {
 			Audience: "admin",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -68,6 +70,7 @@ func TestInvalidKeysUrl(t *testing.T) {
 			Roles:    []string{"test_role_1"},
 			KeysUrl:  "https://invalid-url",
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -87,6 +90,7 @@ func TestIncorrectKeysUrl(t *testing.T) {
 			Roles:    []string{"test_role_1"},
 			KeysUrl:  "https://google.com",
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -104,6 +108,7 @@ func TestValidToken(t *testing.T) {
 			Audience: "admin",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -124,6 +129,7 @@ func TestInValidTokenWhenNoPublicKeys(t *testing.T) {
 			Roles:    []string{"test_role_1"},
 			KeysUrl:  "https://google.com",
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -145,6 +151,7 @@ func TestValidTokenWithMultipleAudiences(t *testing.T) {
 			Audience: "audience1,audience2",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -164,6 +171,7 @@ func TestExpiredToken(t *testing.T) {
 			Audience: "admin",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(-time.Hour)
@@ -183,6 +191,7 @@ func TestMissingAuthorizationHeaderToken(t *testing.T) {
 			Audience: "admin",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	extractedToken, err := createRequestWithoutAuthorizationHeader(t, azureJwtPlugin)
@@ -198,6 +207,7 @@ func TestNotBearerToken(t *testing.T) {
 			Audience: "admin",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(-time.Hour)
@@ -216,6 +226,7 @@ func TestInvalidIssuer(t *testing.T) {
 			Audience: "admin",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -235,6 +246,7 @@ func TestInvalidTokenFormat(t *testing.T) {
 			Audience: "admin",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	tokenWithInvalidFormat := "some_format"
@@ -251,6 +263,7 @@ func TestWrongAudienceToken(t *testing.T) {
 			Audience: "right-audience",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -270,6 +283,7 @@ func TestWrongAudienceInMultipleAudiences(t *testing.T) {
 			Audience: "right-audience1,right-audience2",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -289,6 +303,7 @@ func TestCorrectAudienceInMultipleAudiences(t *testing.T) {
 			Audience: "right-audience1,right-audience2",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -308,6 +323,7 @@ func TestMissingRolesInToken(t *testing.T) {
 			Audience: "tenant",
 			Roles:    []string{"test_role_1", "test_role_2"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -328,6 +344,7 @@ func TestOneRoleInToken(t *testing.T) {
 			Roles:         []string{"test_role_1", "test_role_2"},
 			MatchAllRoles: true,
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -346,6 +363,7 @@ func TestNoRolesInToken(t *testing.T) {
 			Issuer:   "random-issuer",
 			Audience: "tenant",
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -364,6 +382,7 @@ func TestRolesInConfigButNotInToken(t *testing.T) {
 			Audience: "tenant",
 			Roles:    []string{"test_role_1", "test_role_2"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
