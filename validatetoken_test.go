@@ -128,6 +128,9 @@ func TestInValidTokenWhenNoPublicKeys(t *testing.T) {
 
 	expiresAt := time.Now().Add(time.Hour)
 	validToken, _ := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "config_rsa")
+	// Instatiate rsakeys by calling GetPublicKeys
+	// FIXME: we should create rsakeys correctly on initialisation and not hope that GetPublicKeys is called to do it, nor use a global variable
+	azureJwtPlugin.GetPublicKeys(azureJwtPlugin.config)
 
 	_, err := createRequestAndValidateTokenWithNoPublicKeys(t, azureJwtPlugin, validToken)
 
