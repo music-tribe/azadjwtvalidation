@@ -1,7 +1,8 @@
-package azadjwtvalidation
+package jwtmodels
 
 import (
 	"encoding/json"
+	"log"
 )
 
 type AzureJwt struct {
@@ -37,4 +38,17 @@ type JWK struct {
 
 type JWKSet struct {
 	Keys []JWK `json:"keys"`
+}
+
+func (claims *Claims) IsValidForRole(configRole string, debugLogger *log.Logger) bool {
+	for _, parsedRole := range claims.Roles {
+		if parsedRole == configRole {
+			debugLogger.Println("Match:", parsedRole, configRole)
+			return true
+		} else {
+			debugLogger.Println("No match:", parsedRole, configRole)
+		}
+	}
+
+	return false
 }
