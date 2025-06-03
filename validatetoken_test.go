@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/music-tribe/azadjwtvalidation/internal/jwtmodels"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -442,7 +443,7 @@ func TestHttpErrorLoggingWithLogHeaderEnabled(t *testing.T) {
 	assert.Contains(t, buf.String(), "\"Url\":\"/testtoken\"")
 }
 
-func createRequestAndValidateToken(t *testing.T, azureJwtPlugin AzureJwtPlugin, publicKey *rsa.PublicKey, token string) (*AzureJwt, error) {
+func createRequestAndValidateToken(t *testing.T, azureJwtPlugin AzureJwtPlugin, publicKey *rsa.PublicKey, token string) (*jwtmodels.AzureJwt, error) {
 	err := azureJwtPlugin.GetPublicKeys(&Config{
 		PublicKey: string(PublicKeyToBytes(publicKey)),
 		KeysUrl:   azureJwtPlugin.config.KeysUrl,
@@ -462,7 +463,7 @@ func createRequestAndValidateToken(t *testing.T, azureJwtPlugin AzureJwtPlugin, 
 	return extractedToken, err
 }
 
-func createRequestAndValidateTokenWithNoPublicKeys(t *testing.T, azureJwtPlugin AzureJwtPlugin, token string) (*AzureJwt, error) {
+func createRequestAndValidateTokenWithNoPublicKeys(t *testing.T, azureJwtPlugin AzureJwtPlugin, token string) (*jwtmodels.AzureJwt, error) {
 	request := httptest.NewRequest("GET", "/testtoken", nil)
 	request.Header.Set("Authorization", "Bearer "+token)
 	extractedToken, err := azureJwtPlugin.ExtractToken(request)
@@ -473,14 +474,14 @@ func createRequestAndValidateTokenWithNoPublicKeys(t *testing.T, azureJwtPlugin 
 	return extractedToken, err
 }
 
-func createRequestWithoutAuthorizationHeader(t *testing.T, azureJwtPlugin AzureJwtPlugin) (*AzureJwt, error) {
+func createRequestWithoutAuthorizationHeader(t *testing.T, azureJwtPlugin AzureJwtPlugin) (*jwtmodels.AzureJwt, error) {
 	request := httptest.NewRequest("GET", "/testtoken", nil)
 	extractedToken, err := azureJwtPlugin.ExtractToken(request)
 
 	return extractedToken, err
 }
 
-func createRequestWithAuthorizationHeaderButNotBearerToken(t *testing.T, azureJwtPlugin AzureJwtPlugin, token string) (*AzureJwt, error) {
+func createRequestWithAuthorizationHeaderButNotBearerToken(t *testing.T, azureJwtPlugin AzureJwtPlugin, token string) (*jwtmodels.AzureJwt, error) {
 	request := httptest.NewRequest("GET", "/testtoken", nil)
 	request.Header.Set("Authorization", token)
 	extractedToken, err := azureJwtPlugin.ExtractToken(request)
@@ -488,7 +489,7 @@ func createRequestWithAuthorizationHeaderButNotBearerToken(t *testing.T, azureJw
 	return extractedToken, err
 }
 
-func createRequestWithInvalidBearerTokenFormat(t *testing.T, azureJwtPlugin AzureJwtPlugin, token string) (*AzureJwt, error) {
+func createRequestWithInvalidBearerTokenFormat(t *testing.T, azureJwtPlugin AzureJwtPlugin, token string) (*jwtmodels.AzureJwt, error) {
 	request := httptest.NewRequest("GET", "/testtoken", nil)
 	request.Header.Set("Authorization", "Bearer "+token)
 	extractedToken, err := azureJwtPlugin.ExtractToken(request)
