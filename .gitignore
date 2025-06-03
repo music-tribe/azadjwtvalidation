@@ -1,1 +1,11 @@
 .dccache
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Pre-commit generated files
+
+# unit tests
+**/results_junitxml_gosec.xml
+
+/.tools

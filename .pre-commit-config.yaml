@@ -1,0 +1,22 @@
+# See http://pre-commit.com for more information
+# See http://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.3.0
+    hooks:
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-added-large-files
+  - repo: https://github.com/tekwizely/pre-commit-golang
+    rev: v1.0.0-rc.1
+    hooks:
+    - id: my-cmd-mod
+      name: go-test
+      alias: go-test
+      args: [ make, ci_test, '--hook:env:_GO_TEST_SHORT=${GO_TEST_SHORT}' ]
+    - id: go-vet-mod
+    # FIXME: uncomment and fix issues
+    # - id: go-sec-mod
+    #   args: [ -fmt=junit-xml, -out=results_junitxml_gosec.xml, -track-suppressions ]
+    # - id: go-staticcheck-mod
+    #   args: [-checks, "all, -ST1000, -ST1001, -ST1003, -ST1016, -ST1020, -ST1021, -ST1022"]
