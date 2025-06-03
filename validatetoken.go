@@ -141,10 +141,31 @@ func (azureJwt *AzureJwtPlugin) GetPublicKeys(config *Config) error {
 		resp, err := azureJwt.client.Get(config.KeysUrl)
 
 		if err != nil {
-			LoggerWARN.Println("failed to load public key from:", config.KeysUrl)
-			return fmt.Errorf("failed to load public key from:%v", config.KeysUrl)
+			e := fmt.Errorf("failed to load public key from:%v", config.KeysUrl)
+			LoggerWARN.Println(e)
+			return e
 		}
-		json.NewDecoder(resp.Body).Decode(&body)
+		defer resp.Body.Close()
+		bytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			e := fmt.Errorf("failed to read response body from:%v", config.KeysUrl)
+			LoggerWARN.Println(e.Error())
+			return e
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			e := fmt.Errorf("failed to retrieve keys. Response: %s, Body: %s", resp.Status, bytes)
+			LoggerWARN.Println(e.Error())
+			return e
+		}
+
+		err = json.Unmarshal(bytes, &body)
+		if err != nil {
+			e := fmt.Errorf("failed to unmarshal public kyes: %v. Response: %s, Body: %s", err, resp.Status, bytes)
+			LoggerWARN.Println(e.Error())
+			return e
+		}
+
 		keys := body.Keys
 
 		if len(keys) == 0 {
