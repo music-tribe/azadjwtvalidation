@@ -143,29 +143,28 @@ func (azureJwt *AzureJwtPlugin) GetPublicKeys(config *Config) error {
 		if err != nil {
 			LoggerWARN.Println("failed to load public key from:", config.KeysUrl)
 			return fmt.Errorf("failed to load public key from:%v", config.KeysUrl)
-		} else {
-			json.NewDecoder(resp.Body).Decode(&body)
-			keys := body.Keys
+		}
+		json.NewDecoder(resp.Body).Decode(&body)
+		keys := body.Keys
 
-			if len(keys) == 0 {
-				LoggerWARN.Println("failed to load public key. No keys found from:", config.KeysUrl)
-				return fmt.Errorf("failed to load public key. No keys found from:%v", config.KeysUrl)
+		if len(keys) == 0 {
+			LoggerWARN.Println("failed to load public key. No keys found from:", config.KeysUrl)
+			return fmt.Errorf("failed to load public key. No keys found from:%v", config.KeysUrl)
+		}
+		for _, key := range keys {
+			kid := key.Kid
+			e := key.E
+			rsakey := new(rsa.PublicKey)
+			number, _ := base64.RawURLEncoding.DecodeString(key.N)
+			rsakey.N = new(big.Int).SetBytes(number)
+
+			b, err := base64.RawURLEncoding.DecodeString(e)
+			if err != nil {
+				LoggerWARN.Println("Error parsing key E:", err)
 			}
-			for _, key := range keys {
-				kid := key.Kid
-				e := key.E
-				rsakey := new(rsa.PublicKey)
-				number, _ := base64.RawURLEncoding.DecodeString(key.N)
-				rsakey.N = new(big.Int).SetBytes(number)
 
-				b, err := base64.RawURLEncoding.DecodeString(e)
-				if err != nil {
-					LoggerWARN.Println("Error parsing key E:", err)
-				}
-
-				rsakey.E = int(new(big.Int).SetBytes(b).Uint64())
-				rsakeys[kid] = rsakey
-			}
+			rsakey.E = int(new(big.Int).SetBytes(b).Uint64())
+			rsakeys[kid] = rsakey
 		}
 	}
 
