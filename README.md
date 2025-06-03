@@ -36,6 +36,20 @@ spec:
             audience: "d304eaf9-e22f-48f5-b3cf-c03dcc5452ff,d14ce77d-5be7-437b-b165-16b57813ec4c"
 ```
 
+## Running Plugin in Local Mode
+
+More information available [here](https://plugins.traefik.io/install).
+
+```bash
+mkdir -p traefik/plugins-local/src/github.com/music-tribe
+ln -s `pwd` traefik/plugins-local/src/github.com/music-tribe/azadjwtvalidation
+cp static-dev-config.yml traefik/config.yml
+cd traefik
+traefik --configfile config.yaml
+```
+
+> Update `dynamic-dev-config.yml` as appropriate
+
 ## Relevant links
 
 - [jwt.ms](https://jwt.ms/) - validate your Azure AD and Azure AD B2C token online

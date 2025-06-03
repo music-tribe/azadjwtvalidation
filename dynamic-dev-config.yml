@@ -19,7 +19,7 @@ http:
   middlewares:
     azadjwtvalidation:
       plugin:
-        dev:
+        azadjwtvalidation:
           keysurl: "https://jwks.keys"
           issuer: "https://issuer.test"
           audience: "audience1,audience2"
