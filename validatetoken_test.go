@@ -30,6 +30,7 @@ func TestInvalidPublicKey(t *testing.T) {
 			Roles:    []string{"test_role_1"},
 			KeysUrl:  "",
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -48,6 +49,7 @@ func TestValidTokenFromDifferentTenant(t *testing.T) {
 			Audience: "admin",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -59,6 +61,7 @@ func TestValidTokenFromDifferentTenant(t *testing.T) {
 	assert.Error(t, err, "invalid public key")
 }
 
+// Invalid url doesn't exist
 func TestInvalidKeysUrl(t *testing.T) {
 	azureJwtPlugin := AzureJwtPlugin{
 		config: &Config{
@@ -67,6 +70,7 @@ func TestInvalidKeysUrl(t *testing.T) {
 			Roles:    []string{"test_role_1"},
 			KeysUrl:  "https://invalid-url",
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -77,6 +81,26 @@ func TestInvalidKeysUrl(t *testing.T) {
 	assert.Error(t, err, "failed to load public key from:https://invalid-url")
 }
 
+// Invalid url exists but is incorrect
+func TestIncorrectKeysUrl(t *testing.T) {
+	azureJwtPlugin := AzureJwtPlugin{
+		config: &Config{
+			Issuer:   "random-issuer",
+			Audience: "admin",
+			Roles:    []string{"test_role_1"},
+			KeysUrl:  "https://google.com",
+		},
+		client: http.DefaultClient,
+	}
+
+	expiresAt := time.Now().Add(time.Hour)
+	validToken, publicKey := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "config_rsa")
+
+	_, err := createRequestAndValidateToken(t, azureJwtPlugin, publicKey, validToken)
+
+	assert.Error(t, err, "failed to load public key. No keys found from:https://google.com")
+}
+
 func TestValidToken(t *testing.T) {
 	azureJwtPlugin := AzureJwtPlugin{
 		config: &Config{
@@ -84,6 +108,7 @@ func TestValidToken(t *testing.T) {
 			Audience: "admin",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -96,6 +121,29 @@ func TestValidToken(t *testing.T) {
 	assert.Equal(t, azureJwtPlugin.config.Issuer, extractedToken.Payload.Iss)
 }
 
+func TestInValidTokenWhenNoPublicKeys(t *testing.T) {
+	azureJwtPlugin := AzureJwtPlugin{
+		config: &Config{
+			Issuer:   "random-issuer",
+			Audience: "admin",
+			Roles:    []string{"test_role_1"},
+			KeysUrl:  "https://google.com",
+		},
+		client: http.DefaultClient,
+	}
+
+	expiresAt := time.Now().Add(time.Hour)
+	validToken, _ := generateTestToken(expiresAt, azureJwtPlugin.config.Roles, azureJwtPlugin.config.Audience, azureJwtPlugin.config.Issuer, "config_rsa")
+	// Instatiate rsakeys by calling GetPublicKeys
+	// FIXME: we should create rsakeys correctly on initialisation and not hope that GetPublicKeys is called to do it, nor use a global variable
+	azureJwtPlugin.GetPublicKeys(azureJwtPlugin.config)
+
+	_, err := createRequestAndValidateTokenWithNoPublicKeys(t, azureJwtPlugin, validToken)
+
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "invalid public key")
+}
+
 func TestValidTokenWithMultipleAudiences(t *testing.T) {
 	azureJwtPlugin := AzureJwtPlugin{
 		config: &Config{
@@ -103,6 +151,7 @@ func TestValidTokenWithMultipleAudiences(t *testing.T) {
 			Audience: "audience1,audience2",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -122,6 +171,7 @@ func TestExpiredToken(t *testing.T) {
 			Audience: "admin",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(-time.Hour)
@@ -141,6 +191,7 @@ func TestMissingAuthorizationHeaderToken(t *testing.T) {
 			Audience: "admin",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	extractedToken, err := createRequestWithoutAuthorizationHeader(t, azureJwtPlugin)
@@ -156,6 +207,7 @@ func TestNotBearerToken(t *testing.T) {
 			Audience: "admin",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(-time.Hour)
@@ -174,6 +226,7 @@ func TestInvalidIssuer(t *testing.T) {
 			Audience: "admin",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -193,6 +246,7 @@ func TestInvalidTokenFormat(t *testing.T) {
 			Audience: "admin",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	tokenWithInvalidFormat := "some_format"
@@ -209,6 +263,7 @@ func TestWrongAudienceToken(t *testing.T) {
 			Audience: "right-audience",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -228,6 +283,7 @@ func TestWrongAudienceInMultipleAudiences(t *testing.T) {
 			Audience: "right-audience1,right-audience2",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -247,6 +303,7 @@ func TestCorrectAudienceInMultipleAudiences(t *testing.T) {
 			Audience: "right-audience1,right-audience2",
 			Roles:    []string{"test_role_1"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -266,6 +323,7 @@ func TestMissingRolesInToken(t *testing.T) {
 			Audience: "tenant",
 			Roles:    []string{"test_role_1", "test_role_2"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -286,6 +344,7 @@ func TestOneRoleInToken(t *testing.T) {
 			Roles:         []string{"test_role_1", "test_role_2"},
 			MatchAllRoles: true,
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -304,6 +363,7 @@ func TestNoRolesInToken(t *testing.T) {
 			Issuer:   "random-issuer",
 			Audience: "tenant",
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -322,6 +382,7 @@ func TestRolesInConfigButNotInToken(t *testing.T) {
 			Audience: "tenant",
 			Roles:    []string{"test_role_1", "test_role_2"},
 		},
+		client: http.DefaultClient,
 	}
 
 	expiresAt := time.Now().Add(time.Hour)
@@ -391,6 +452,17 @@ func createRequestAndValidateToken(t *testing.T, azureJwtPlugin AzureJwtPlugin, 
 		return nil, err
 	}
 
+	request := httptest.NewRequest("GET", "/testtoken", nil)
+	request.Header.Set("Authorization", "Bearer "+token)
+	extractedToken, err := azureJwtPlugin.ExtractToken(request)
+	assert.NoError(t, err)
+
+	err = azureJwtPlugin.ValidateToken(extractedToken)
+
+	return extractedToken, err
+}
+
+func createRequestAndValidateTokenWithNoPublicKeys(t *testing.T, azureJwtPlugin AzureJwtPlugin, token string) (*AzureJwt, error) {
 	request := httptest.NewRequest("GET", "/testtoken", nil)
 	request.Header.Set("Authorization", "Bearer "+token)
 	extractedToken, err := azureJwtPlugin.ExtractToken(request)

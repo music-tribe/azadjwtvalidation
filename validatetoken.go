@@ -37,6 +37,7 @@ type Config struct {
 type AzureJwtPlugin struct {
 	next   http.Handler
 	config *Config
+	client *http.Client
 }
 
 var (
@@ -76,6 +77,9 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 	plugin := &AzureJwtPlugin{
 		next:   next,
 		config: config,
+		client: &http.Client{
+			Timeout: time.Second * 10,
+		},
 	}
 
 	go plugin.scheduleUpdateKeys(config)
@@ -133,30 +137,55 @@ func (azureJwt *AzureJwtPlugin) GetPublicKeys(config *Config) error {
 	verifyAndSetPublicKey(config.PublicKey)
 
 	if strings.TrimSpace(config.KeysUrl) != "" {
-		var body map[string]interface{}
-		resp, err := http.Get(config.KeysUrl)
+		var body JWKSet
+		resp, err := azureJwt.client.Get(config.KeysUrl)
 
 		if err != nil {
-			LoggerWARN.Println("failed to load public key from:", config.KeysUrl)
-			return fmt.Errorf("failed to load public key from:%v", config.KeysUrl)
-		} else {
-			json.NewDecoder(resp.Body).Decode(&body)
-			for _, bodykey := range body["keys"].([]interface{}) {
-				key := bodykey.(map[string]interface{})
-				kid := key["kid"].(string)
-				e := key["e"].(string)
-				rsakey := new(rsa.PublicKey)
-				number, _ := base64.RawURLEncoding.DecodeString(key["n"].(string))
-				rsakey.N = new(big.Int).SetBytes(number)
+			e := fmt.Errorf("failed to load public key from:%v", config.KeysUrl)
+			LoggerWARN.Println(e)
+			return e
+		}
+		defer resp.Body.Close()
+		bytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			e := fmt.Errorf("failed to read response body from:%v", config.KeysUrl)
+			LoggerWARN.Println(e.Error())
+			return e
+		}
 
-				b, err := base64.RawURLEncoding.DecodeString(e)
-				if err != nil {
-					LoggerWARN.Println("Error parsing key E:", err)
-				}
+		if resp.StatusCode != http.StatusOK {
+			e := fmt.Errorf("failed to retrieve keys. Response: %s, Body: %s", resp.Status, bytes)
+			LoggerWARN.Println(e.Error())
+			return e
+		}
 
-				rsakey.E = int(new(big.Int).SetBytes(b).Uint64())
-				rsakeys[kid] = rsakey
+		err = json.Unmarshal(bytes, &body)
+		if err != nil {
+			e := fmt.Errorf("failed to unmarshal public kyes: %v. Response: %s, Body: %s", err, resp.Status, bytes)
+			LoggerWARN.Println(e.Error())
+			return e
+		}
+
+		keys := body.Keys
+
+		if len(keys) == 0 {
+			LoggerWARN.Println("failed to load public key. No keys found from:", config.KeysUrl)
+			return fmt.Errorf("failed to load public key. No keys found from:%v", config.KeysUrl)
+		}
+		for _, key := range keys {
+			kid := key.Kid
+			e := key.E
+			rsakey := new(rsa.PublicKey)
+			number, _ := base64.RawURLEncoding.DecodeString(key.N)
+			rsakey.N = new(big.Int).SetBytes(number)
+
+			b, err := base64.RawURLEncoding.DecodeString(e)
+			if err != nil {
+				LoggerWARN.Println("Error parsing key E:", err)
 			}
+
+			rsakey.E = int(new(big.Int).SetBytes(b).Uint64())
+			rsakeys[kid] = rsakey
 		}
 	}
 
