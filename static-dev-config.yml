@@ -10,9 +10,9 @@ log:
   level: DEBUG
 
 experimental:
-  devPlugin:
-    goPath: /home/music-tribe/go/
-    moduleName: github.com/music-tribe/azadjwtvalidation
+  localPlugins:
+    azadjwtvalidation:
+      moduleName: github.com/music-tribe/azadjwtvalidation
 
 entryPoints:
   http:
@@ -22,4 +22,4 @@ entryPoints:
 
 providers:
   file:
-    filename: dynamic-dev-config.yml
+    filename: plugins-local/src/github.com/music-tribe/azadjwtvalidation/dynamic-dev-config.yml
