@@ -93,6 +93,8 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 
 	go plugin.scheduleUpdateKeys(config)
 
+	LoggerINFO.Println("azadjwtvalidation plugin started")
+
 	return plugin, nil
 }
 
