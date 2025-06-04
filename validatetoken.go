@@ -325,7 +325,7 @@ func (azureJwt *AzureJwtPlugin) validateClaims(parsedClaims *Claims) error {
 
 	if parsedClaims.Roles != nil {
 		if len(azureJwt.config.Roles) > 0 {
-			var allRolesValid bool = true
+			var allRolesValid = true
 			if !azureJwt.config.MatchAllRoles {
 				allRolesValid = false
 			}

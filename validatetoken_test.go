@@ -504,6 +504,7 @@ func generateTestToken(expiresAt time.Time, roles []string, audience string, iss
 
 	testClaims := &JwtClaim{
 		Roles: roles,
+		//lint:ignore SA1019 FIXME at a later date. Use RegisteredClaims: https://pkg.go.dev/github.com/golang-jwt/jwt/v4@v4.4.2#example-NewWithClaims-CustomClaimsType
 		StandardClaims: jwt.StandardClaims{
 			Audience:  audience,
 			Issuer:    issuer,

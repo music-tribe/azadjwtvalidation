@@ -24,9 +24,8 @@ jobs:
     - name: Build
       run: go build -v ./...
 
-    # FIXME: uncomment and fix issues
-    # - name: Staticcheck
-    #   run: make ci_staticcheck
+    - name: Staticcheck
+      run: make ci_staticcheck
 
     - name: GoVet
       run: go vet ./...
