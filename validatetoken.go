@@ -82,6 +82,15 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 		},
 	}
 
+	// Set up the initial public keys before we start
+	// Ensure we return an error if we fail
+	// This will disable the plugin & any routes dependent on the plugin: https://github.com/traefik/plugindemo?tab=readme-ov-file#usage
+	err := plugin.GetPublicKeys(config)
+	if err != nil {
+		LoggerWARN.Println("failed to start azadjwtvalidation plugin! Disabling plugin")
+		return nil, err
+	}
+
 	go plugin.scheduleUpdateKeys(config)
 
 	return plugin, nil
