@@ -18,5 +18,5 @@ repos:
     # FIXME: uncomment and fix issues
     # - id: go-sec-mod
     #   args: [ -fmt=junit-xml, -out=results_junitxml_gosec.xml, -track-suppressions ]
-    # - id: go-staticcheck-mod
-    #   args: [-checks, "all, -ST1000, -ST1001, -ST1003, -ST1016, -ST1020, -ST1021, -ST1022"]
+    - id: go-staticcheck-mod
+      args: [-checks, "all, -ST1000, -ST1001, -ST1003, -ST1016, -ST1020, -ST1021, -ST1022"]
