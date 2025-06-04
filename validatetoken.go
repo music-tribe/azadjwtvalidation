@@ -138,6 +138,9 @@ func (azureJwt *AzureJwtPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Requ
 }
 
 func (azureJwt *AzureJwtPlugin) scheduleUpdateKeys(config *Config) {
+	// FIXME: pass context here so we can check Done channel
+	// FIXME: 24 hours frequency is probably ok: https://learn.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview#validate-signature
+	// FIXME: handle errors correctly
 	for {
 		_ = azureJwt.GetPublicKeys(config)
 		time.Sleep(15 * time.Minute)
