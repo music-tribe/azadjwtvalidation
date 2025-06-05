@@ -6,6 +6,7 @@ import (
 	"os"
 )
 
+//go:generate mockgen -destination=./mock_logger.go -package=logger -source=logger.go Logger
 type Logger interface {
 	Debug(msg string)
 	Info(msg string)

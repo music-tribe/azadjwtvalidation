@@ -1,11 +1,14 @@
 module github.com/music-tribe/azadjwtvalidation
 
-go 1.19
+go 1.23
+
+toolchain go1.24.3
 
 require (
 	github.com/go-playground/validator/v10 v10.26.0
 	github.com/golang-jwt/jwt/v4 v4.4.2
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
+	go.uber.org/mock v0.5.2
 )
 
 require (
