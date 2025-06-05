@@ -59,8 +59,11 @@ func (azjwt *AzureJwtValidator) GetPublicKeys(config *Config) error {
 			kid := key.Kid
 			e := key.E
 			rsakey := new(rsa.PublicKey)
-			// FIXME: no error checking here
-			number, _ := base64.RawURLEncoding.DecodeString(key.N)
+			number, err := base64.RawURLEncoding.DecodeString(key.N)
+			if err != nil {
+				azjwt.logger.Warn(fmt.Sprintf("Error decoding key N:%v", err))
+				continue
+			}
 			rsakey.N = new(big.Int).SetBytes(number)
 
 			b, err := base64.RawURLEncoding.DecodeString(e)

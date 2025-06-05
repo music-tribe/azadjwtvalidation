@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"testing"
 
@@ -278,6 +279,44 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 			l)
 
 		l.EXPECT().Warn("Error parsing key E:illegal base64 data at input byte 7")
+
+		err = azureJwtValidator.GetPublicKeys(&config)
+		// No error returned because we loop over many keys but we need to ensure we don't store the dodgy key in our map
+		assert.NoError(t, err)
+		assert.Empty(t, azureJwtValidator.rsakeys)
+	})
+
+	t.Run("expect error if we fail to decode N and key shouldn't be stored", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		l := logger.NewMockLogger(ctrl)
+
+		pub := generatePublicKey(t)
+		keys := jwtmodels.JWKSet{
+			Keys: []jwtmodels.JWK{
+				{
+					Kid: "0bxzOoXqygO5AKM2rmZn1DQafGQCUJG8fdeiyJYCvbY",
+					Kty: "RSA",
+					Use: "sig",
+					N:   "not a number",
+					E:   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(pub.E)).Bytes()),
+				},
+			},
+		}
+		keysBytes, err := json.Marshal(keys)
+		require.NoError(t, err)
+
+		azureJwtValidator := NewAzureJwtValidator(config,
+			&http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(bytes.NewReader(keysBytes)),
+					},
+					nil),
+			},
+			l)
+
+		l.EXPECT().Warn("Error decoding key N:illegal base64 data at input byte 3")
 
 		err = azureJwtValidator.GetPublicKeys(&config)
 		// No error returned because we loop over many keys but we need to ensure we don't store the dodgy key in our map
