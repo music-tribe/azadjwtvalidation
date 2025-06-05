@@ -14,6 +14,10 @@ import (
 )
 
 func TestAzureJwtValidator_verifyAndSetPublicKey(t *testing.T) {
+	t.Parallel()
+
+	pub := generatePublicKey(t)
+
 	config := Config{
 		KeysUrl:       "https://jwks.keys",
 		Issuer:        "https://issuer.test",
@@ -23,14 +27,15 @@ func TestAzureJwtValidator_verifyAndSetPublicKey(t *testing.T) {
 	}
 	l := logger.NewStdLog("warn")
 
-	azureJwtValidator := NewAzureJwtValidator(config, http.DefaultClient, l)
 	t.Run("expect error if public key is invalid", func(t *testing.T) {
+		azureJwtValidator := NewAzureJwtValidator(config, http.DefaultClient, l)
 		err := azureJwtValidator.verifyAndSetPublicKey("invalid public key")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "public key could not be decoded")
 	})
 
 	t.Run("expect error if public key is not rsa", func(t *testing.T) {
+		azureJwtValidator := NewAzureJwtValidator(config, http.DefaultClient, l)
 		var pubPEMData = []byte(`
 -----BEGIN PUBLIC KEY-----
 MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAlRuRnThUjU8/prwYxbty
@@ -53,35 +58,31 @@ and some more`)
 	})
 
 	t.Run("expect error if public key can not be parsed as RSA", func(t *testing.T) {
-		bitSize := 4096
-		key, err := rsa.GenerateKey(rand.Reader, bitSize)
-		require.NoError(t, err)
-		pub := key.Public()
+		azureJwtValidator := NewAzureJwtValidator(config, http.DefaultClient, l)
+
 		// Encode public key to PKCS#1 ASN.1 PEM. we want PKIX
 		pubPEM := pem.EncodeToMemory(
 			&pem.Block{
 				Type:  "RSA PUBLIC KEY",
-				Bytes: x509.MarshalPKCS1PublicKey(pub.(*rsa.PublicKey)),
+				Bytes: x509.MarshalPKCS1PublicKey(pub),
 			},
 		)
-		err = azureJwtValidator.verifyAndSetPublicKey(string(pubPEM))
+		err := azureJwtValidator.verifyAndSetPublicKey(string(pubPEM))
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "unable to parse RSA public key")
 	})
 
 	t.Run("expect error if public key can not be parsed as RSA", func(t *testing.T) {
-		bitSize := 4096
-		key, err := rsa.GenerateKey(rand.Reader, bitSize)
-		require.NoError(t, err)
-		pub := key.Public()
+		azureJwtValidator := NewAzureJwtValidator(config, http.DefaultClient, l)
+
 		// Encode public key to PKCS#1 ASN.1 PEM. we want PKIX
 		pubPEM := pem.EncodeToMemory(
 			&pem.Block{
 				Type:  "RSA PUBLIC KEY",
-				Bytes: x509.MarshalPKCS1PublicKey(pub.(*rsa.PublicKey)),
+				Bytes: x509.MarshalPKCS1PublicKey(pub),
 			},
 		)
-		err = azureJwtValidator.verifyAndSetPublicKey(string(pubPEM))
+		err := azureJwtValidator.verifyAndSetPublicKey(string(pubPEM))
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "unable to parse RSA public key")
 	})
@@ -89,10 +90,7 @@ and some more`)
 	// TODO: how to test "unable to convert RSA public key"
 
 	t.Run("expect no error if public key is valid", func(t *testing.T) {
-		bitSize := 4096
-		key, err := rsa.GenerateKey(rand.Reader, bitSize)
-		require.NoError(t, err)
-		pub := key.Public().(*rsa.PublicKey)
+		azureJwtValidator := NewAzureJwtValidator(config, http.DefaultClient, l)
 		// Encode public key PKIX
 		pubBytes, err := x509.MarshalPKIXPublicKey(pub)
 		require.NoError(t, err)
@@ -107,4 +105,11 @@ and some more`)
 		assert.NotNil(t, azureJwtValidator.rsakeys)
 		assert.Equal(t, pub, azureJwtValidator.rsakeys["config_rsa"])
 	})
+}
+
+func generatePublicKey(t *testing.T) *rsa.PublicKey {
+	bitSize := 4096
+	key, err := rsa.GenerateKey(rand.Reader, bitSize)
+	require.NoError(t, err)
+	return key.Public().(*rsa.PublicKey)
 }
