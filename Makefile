@@ -16,19 +16,31 @@ clean_tools:
 	rm -f .tools
 .PHONY: clean_tools
 
-run_tests: tools
+mocks:
+	go install go.uber.org/mock/mockgen@v0.5.2
+	go generate ./...
+
+clean_mocks:
+	find . -name "mock_*" -type f  -exec rm -r {} +
+
+# We need to add generated mocks to source control so downstream packages can import and use them
+ci_check_mocks_up_to_date: mocks
+	git diff --exit-code && echo $?
+.PHONY: ci_check_mocks_up_to_date
+
+run_tests: tools mocks
 	go test ./... -v
 
-run_tests_short: tools
+run_tests_short: tools mocks
 	go test ./... -v -short
 
-ci_test: tools
+ci_test: tools mocks
 	go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
 
 ci_staticcheck: tools
 	staticcheck -checks "all, -ST1000, -ST1001, -ST1003, -ST1016, -ST1020, -ST1021, -ST1022" ./...
 
-race: tools
+race: tools mocks
 	CGO_ENABLED=1 go test -v -race $(_GO_TEST_SHORT) ./...
 
 go_vuln:
