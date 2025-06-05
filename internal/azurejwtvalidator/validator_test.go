@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/music-tribe/azadjwtvalidation/internal/logger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,14 +16,16 @@ func TestNewAzureJwtValidator(t *testing.T) {
 		Roles:         []string{"Test.Role.1", "Test.Role.2"},
 		MatchAllRoles: true,
 	}
+	logger := logger.NewStdLog("warn")
+
 	t.Run("expect non nil rsakeys", func(t *testing.T) {
-		azureJwtValidator := NewAzureJwtValidator(config, http.DefaultClient)
+		azureJwtValidator := NewAzureJwtValidator(config, http.DefaultClient, logger)
 		assert.NotNil(t, azureJwtValidator.rsakeys)
 	})
 
 	t.Run("expect our client to be set", func(t *testing.T) {
 		client := http.DefaultClient
-		azureJwtValidator := NewAzureJwtValidator(config, client)
+		azureJwtValidator := NewAzureJwtValidator(config, client, logger)
 		assert.Equal(t, client, azureJwtValidator.client)
 	})
 
@@ -31,7 +34,7 @@ func TestNewAzureJwtValidator(t *testing.T) {
 			KeysUrl: "https://jwks.keys",
 		}
 		assert.Panics(t, func() {
-			NewAzureJwtValidator(invalidConfig, http.DefaultClient)
+			NewAzureJwtValidator(invalidConfig, http.DefaultClient, logger)
 		})
 	})
 }
