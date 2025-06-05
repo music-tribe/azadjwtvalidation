@@ -1,16 +1,23 @@
 package azurejwtvalidator
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
+	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"testing"
 
+	"github.com/music-tribe/azadjwtvalidation/internal/jwtmodels"
 	"github.com/music-tribe/azadjwtvalidation/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func TestAzureJwtValidator_verifyAndSetPublicKey(t *testing.T) {
@@ -112,4 +119,148 @@ func generatePublicKey(t *testing.T) *rsa.PublicKey {
 	key, err := rsa.GenerateKey(rand.Reader, bitSize)
 	require.NoError(t, err)
 	return key.Public().(*rsa.PublicKey)
+}
+
+func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
+	t.Parallel()
+
+	config := Config{
+		KeysUrl:       "https://jwks.keys",
+		Issuer:        "https://issuer.test",
+		Audience:      "audience1,audience2",
+		Roles:         []string{"Test.Role.1", "Test.Role.2"},
+		MatchAllRoles: true,
+	}
+
+	t.Run("expect error if we fail to get keys from url", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		l := logger.NewMockLogger(ctrl)
+
+		azureJwtValidator := NewAzureJwtValidator(config,
+			&http.Client{
+				Transport: newStubRoundTripper(
+					nil,
+					errors.New("failed to get")),
+			},
+			l)
+
+		l.EXPECT().Warn("failed to load public key from:https://jwks.keys")
+
+		err := azureJwtValidator.GetPublicKeys(&config)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to load public key from:")
+	})
+
+	t.Run("expect error if we fail to read response body", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		l := logger.NewMockLogger(ctrl)
+
+		azureJwtValidator := NewAzureJwtValidator(config,
+			&http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(errReader(0)),
+					},
+					nil),
+			},
+			l)
+
+		l.EXPECT().Warn("failed to read response body from:https://jwks.keys")
+
+		err := azureJwtValidator.GetPublicKeys(&config)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to read response body from:")
+	})
+
+	t.Run("expect error if we fail to retrieve keys", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		l := logger.NewMockLogger(ctrl)
+
+		azureJwtValidator := NewAzureJwtValidator(config,
+			&http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						Status:     "Forbidden",
+						StatusCode: http.StatusForbidden,
+						Body:       io.NopCloser(bytes.NewReader([]byte("test"))),
+					},
+					nil),
+			},
+			l)
+
+		l.EXPECT().Warn(fmt.Sprintf("failed to retrieve keys. Response: %s, Body: %s", "Forbidden", "test"))
+
+		err := azureJwtValidator.GetPublicKeys(&config)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to retrieve keys.")
+	})
+
+	t.Run("expect error if we fail to unmarshal public keys", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		l := logger.NewMockLogger(ctrl)
+
+		azureJwtValidator := NewAzureJwtValidator(config,
+			&http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(bytes.NewReader([]byte("test"))),
+					},
+					nil),
+			},
+			l)
+
+		l.EXPECT().Warn("failed to unmarshal public keys: invalid character 'e' in literal true (expecting 'r'). Response: , Body: test")
+
+		err := azureJwtValidator.GetPublicKeys(&config)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to unmarshal public keys")
+	})
+
+	t.Run("expect error if we there are no keys", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		l := logger.NewMockLogger(ctrl)
+
+		noKeys := jwtmodels.JWKSet{
+			Keys: []jwtmodels.JWK{},
+		}
+		noKeysBytes, err := json.Marshal(noKeys)
+		require.NoError(t, err)
+
+		azureJwtValidator := NewAzureJwtValidator(config,
+			&http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(bytes.NewReader(noKeysBytes)),
+					},
+					nil),
+			},
+			l)
+
+		l.EXPECT().Warn("failed to load public key. No keys found from:https://jwks.keys")
+
+		err = azureJwtValidator.GetPublicKeys(&config)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to load public key")
+	})
+}
+
+type stubRoundTripper struct {
+	response *http.Response
+	err      error
+}
+
+func newStubRoundTripper(response *http.Response, err error) *stubRoundTripper {
+	return &stubRoundTripper{response, err}
+}
+func (sr *stubRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return sr.response, sr.err
+}
+
+type errReader int
+
+func (errReader) Read(p []byte) (n int, err error) {
+	return 0, errors.New("test error")
 }
