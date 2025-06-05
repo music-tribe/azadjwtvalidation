@@ -1,4 +1,4 @@
-module github.com/music-tribe/azadjwtvalidation
+module github.com/herbievorious/azadjwtvalidation
 
 go 1.19
 

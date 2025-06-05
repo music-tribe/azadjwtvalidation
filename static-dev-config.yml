@@ -12,7 +12,7 @@ log:
 experimental:
   localPlugins:
     azadjwtvalidation:
-      moduleName: github.com/music-tribe/azadjwtvalidation
+      moduleName: github.com/herbievorious/azadjwtvalidation
 
 entryPoints:
   http:
@@ -22,4 +22,4 @@ entryPoints:
 
 providers:
   file:
-    filename: plugins-local/src/github.com/music-tribe/azadjwtvalidation/dynamic-dev-config.yml
+    filename: plugins-local/src/github.com/herbievorious/azadjwtvalidation/dynamic-dev-config.yml

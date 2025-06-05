@@ -1,5 +1,5 @@
-[![Go](https://github.com/music-tribe/azadjwtvalidation/actions/workflows/go.yml/badge.svg)](https://github.com/music-tribe/azadjwtvalidation/actions/workflows/go.yml)
-[![CodeQL](https://github.com/music-tribe/azadjwtvalidation/actions/workflows/codeql.yml/badge.svg)](https://github.com/music-tribe/azadjwtvalidation/actions/workflows/codeql.yml)
+[![Go](https://github.com/herbievorious/azadjwtvalidation/actions/workflows/go.yml/badge.svg)](https://github.com/herbievorious/azadjwtvalidation/actions/workflows/go.yml)
+[![CodeQL](https://github.com/herbievorious/azadjwtvalidation/actions/workflows/codeql.yml/badge.svg)](https://github.com/herbievorious/azadjwtvalidation/actions/workflows/codeql.yml)
 [![codecov](https://codecov.io/gh/music-tribe/azadjwtvalidation/branch/master/graph/badge.svg?token=GCEU8TO2WY)](https://codecov.io/gh/music-tribe/azadjwtvalidation)
 
 # Azure Active Directory JWT validation
@@ -42,7 +42,7 @@ More information available [here](https://plugins.traefik.io/install).
 
 ```bash
 mkdir -p traefik/plugins-local/src/github.com/music-tribe
-ln -s `pwd` traefik/plugins-local/src/github.com/music-tribe/azadjwtvalidation
+ln -s `pwd` traefik/plugins-local/src/github.com/herbievorious/azadjwtvalidation
 cp static-dev-config.yml traefik/config.yml
 cd traefik
 traefik --configfile config.yaml
