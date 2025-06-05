@@ -19,6 +19,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/music-tribe/azadjwtvalidation/internal/jwtmodels"
 )
 
 var rsakeys map[string]*rsa.PublicKey
@@ -151,7 +153,7 @@ func (azureJwt *AzureJwtPlugin) GetPublicKeys(config *Config) error {
 	verifyAndSetPublicKey(config.PublicKey)
 
 	if strings.TrimSpace(config.KeysUrl) != "" {
-		var body JWKSet
+		var body jwtmodels.JWKSet
 		resp, err := azureJwt.client.Get(config.KeysUrl)
 
 		if err != nil {
@@ -233,7 +235,7 @@ func verifyAndSetPublicKey(publicKey string) error {
 	return nil
 }
 
-func (azureJwt *AzureJwtPlugin) ExtractToken(request *http.Request) (*AzureJwt, error) {
+func (azureJwt *AzureJwtPlugin) ExtractToken(request *http.Request) (*jwtmodels.AzureJwt, error) {
 	authHeader, ok := request.Header["Authorization"]
 	if !ok {
 		fmt.Println("No authorization header present")
@@ -265,7 +267,7 @@ func (azureJwt *AzureJwtPlugin) ExtractToken(request *http.Request) (*AzureJwt, 
 		fmt.Printf("Signature: %+v", err)
 		return nil, errors.New("invalid token")
 	}
-	jwtToken := AzureJwt{
+	jwtToken := jwtmodels.AzureJwt{
 		RawToken:   []byte(auth[7 : len(parts[0])+len(parts[1])+8]),
 		Signature:  signature,
 		RawPayload: payload,
@@ -283,7 +285,7 @@ func (azureJwt *AzureJwtPlugin) ExtractToken(request *http.Request) (*AzureJwt, 
 	return &jwtToken, nil
 }
 
-func (azureJwt *AzureJwtPlugin) ValidateToken(token *AzureJwt) error {
+func (azureJwt *AzureJwtPlugin) ValidateToken(token *jwtmodels.AzureJwt) error {
 	hash := sha256.Sum256(token.RawToken)
 
 	if _, ok := rsakeys[token.Header.Kid]; !ok {
@@ -299,7 +301,7 @@ func (azureJwt *AzureJwtPlugin) ValidateToken(token *AzureJwt) error {
 		return err
 	}
 
-	var claims Claims
+	var claims jwtmodels.Claims
 	if err := json.Unmarshal(token.RawPayload, &claims); err != nil {
 		return err
 	}
@@ -307,7 +309,7 @@ func (azureJwt *AzureJwtPlugin) ValidateToken(token *AzureJwt) error {
 	return nil
 }
 
-func (azureJwt *AzureJwtPlugin) VerifyToken(jwtToken *AzureJwt) error {
+func (azureJwt *AzureJwtPlugin) VerifyToken(jwtToken *jwtmodels.AzureJwt) error {
 	tokenExpiration, err := jwtToken.Payload.Exp.Int64()
 	if err != nil {
 		return err
@@ -326,7 +328,7 @@ func (azureJwt *AzureJwtPlugin) VerifyToken(jwtToken *AzureJwt) error {
 	return nil
 }
 
-func (azureJwt *AzureJwtPlugin) validateClaims(parsedClaims *Claims) error {
+func (azureJwt *AzureJwtPlugin) validateClaims(parsedClaims *jwtmodels.Claims) error {
 
 	if !strings.Contains(azureJwt.config.Audience, parsedClaims.Aud) {
 		// if parsedClaims.Aud != azureJwt.config.Audience {
@@ -345,7 +347,7 @@ func (azureJwt *AzureJwtPlugin) validateClaims(parsedClaims *Claims) error {
 			}
 
 			for _, role := range azureJwt.config.Roles {
-				roleValid := parsedClaims.isValidForRole(role)
+				roleValid := parsedClaims.IsValidForRole(role, LoggerDEBUG)
 				if azureJwt.config.MatchAllRoles && !roleValid {
 					allRolesValid = false
 					break
@@ -366,19 +368,6 @@ func (azureJwt *AzureJwtPlugin) validateClaims(parsedClaims *Claims) error {
 	}
 
 	return nil
-}
-
-func (claims *Claims) isValidForRole(configRole string) bool {
-	for _, parsedRole := range claims.Roles {
-		if parsedRole == configRole {
-			LoggerDEBUG.Println("Match:", parsedRole, configRole)
-			return true
-		} else {
-			LoggerDEBUG.Println("No match:", parsedRole, configRole)
-		}
-	}
-
-	return false
 }
 
 func LogHttp(logger *log.Logger, message string, headers []string, statusCode int, request *http.Request) {
