@@ -43,7 +43,7 @@ func (azjwt *AzureJwtValidator) GetPublicKeys(config *Config) error {
 
 		err = json.Unmarshal(bytes, &body)
 		if err != nil {
-			e := fmt.Errorf("failed to unmarshal public kyes: %v. Response: %s, Body: %s", err, resp.Status, bytes)
+			e := fmt.Errorf("failed to unmarshal public keys: %v. Response: %s, Body: %s", err, resp.Status, bytes)
 			azjwt.logger.Warn(e.Error())
 			return e
 		}
