@@ -325,6 +325,89 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Empty(t, azureJwtValidator.rsakeys)
 	})
+
+	t.Run("expect success and key stored in map with thumbprint kid", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		l := logger.NewMockLogger(ctrl)
+
+		keys := jwtmodels.JWKSet{
+			Keys: []jwtmodels.JWK{
+				{
+					Kid: kid,
+					Kty: "RSA",
+					Use: "sig",
+					N:   base64.RawURLEncoding.EncodeToString(pub.N.Bytes()),
+					E:   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(pub.E)).Bytes()),
+				},
+			},
+		}
+		keysBytes, err := json.Marshal(keys)
+		require.NoError(t, err)
+
+		azureJwtValidator := NewAzureJwtValidator(config,
+			&http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(bytes.NewReader(keysBytes)),
+					},
+					nil),
+			},
+			l)
+
+		err = azureJwtValidator.GetPublicKeys(&config)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, azureJwtValidator.rsakeys)
+		assert.Equal(t, pub, azureJwtValidator.rsakeys[kid])
+	})
+
+	t.Run("expect success and multiple keys stored in map with thumbprint kid", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		l := logger.NewMockLogger(ctrl)
+
+		pub2 := generatePublicKey(t)
+		kid2, err := jwtmodels.GenerateJwkKid(pub2)
+		require.NoError(t, err)
+
+		keys := jwtmodels.JWKSet{
+			Keys: []jwtmodels.JWK{
+				{
+					Kid: kid,
+					Kty: "RSA",
+					Use: "sig",
+					N:   base64.RawURLEncoding.EncodeToString(pub.N.Bytes()),
+					E:   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(pub.E)).Bytes()),
+				},
+				{
+					Kid: kid2,
+					Kty: "RSA",
+					Use: "sig",
+					N:   base64.RawURLEncoding.EncodeToString(pub2.N.Bytes()),
+					E:   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(pub2.E)).Bytes()),
+				},
+			},
+		}
+		keysBytes, err := json.Marshal(keys)
+		require.NoError(t, err)
+
+		azureJwtValidator := NewAzureJwtValidator(config,
+			&http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(bytes.NewReader(keysBytes)),
+					},
+					nil),
+			},
+			l)
+
+		err = azureJwtValidator.GetPublicKeys(&config)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, azureJwtValidator.rsakeys)
+		assert.True(t, len(azureJwtValidator.rsakeys) == 2)
+		assert.Equal(t, pub, azureJwtValidator.rsakeys[kid])
+		assert.Equal(t, pub2, azureJwtValidator.rsakeys[kid2])
+	})
 }
 
 type stubRoundTripper struct {
