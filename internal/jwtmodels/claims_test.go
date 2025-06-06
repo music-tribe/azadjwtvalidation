@@ -18,8 +18,8 @@ func TestClaims_IsValidForRole(t *testing.T) {
 		Roles []string
 	}
 	type args struct {
-		configRole string
-		l          logger.Logger
+		allowedRole string
+		l           logger.Logger
 	}
 	tests := []struct {
 		name   string
@@ -33,8 +33,8 @@ func TestClaims_IsValidForRole(t *testing.T) {
 				Roles: []string{"Test.Role.1", "Test.Role.2"},
 			},
 			args: args{
-				configRole: "Test.Role.1",
-				l:          l,
+				allowedRole: "Test.Role.1",
+				l:           l,
 			},
 			want: true,
 		},
@@ -44,30 +44,30 @@ func TestClaims_IsValidForRole(t *testing.T) {
 				Roles: []string{"Test.Role.1", "Test.Role.2"},
 			},
 			args: args{
-				configRole: "Test.Role.3",
-				l:          l,
+				allowedRole: "Test.Role.3",
+				l:           l,
 			},
 			want: false,
 		},
 		{
-			name: "expect invalid for empty config role",
+			name: "expect invalid for empty allowed role",
 			fields: fields{
 				Roles: []string{"Test.Role.1", "Test.Role.2"},
 			},
 			args: args{
-				configRole: "",
-				l:          l,
+				allowedRole: "",
+				l:           l,
 			},
 			want: false,
 		},
 		{
-			name: "expect valid for empty config role and empty claim roles",
+			name: "expect valid for empty allowed role and empty claim roles",
 			fields: fields{
 				Roles: []string{},
 			},
 			args: args{
-				configRole: "",
-				l:          l,
+				allowedRole: "",
+				l:           l,
 			},
 			want: false,
 		},
@@ -82,7 +82,7 @@ func TestClaims_IsValidForRole(t *testing.T) {
 				Sub:   tt.fields.Sub,
 				Roles: tt.fields.Roles,
 			}
-			if got := claims.IsValidForRole(tt.args.configRole, tt.args.l); got != tt.want {
+			if got := claims.IsValidForRole(tt.args.allowedRole, tt.args.l); got != tt.want {
 				t.Errorf("Claims.IsValidForRole() = %v, want %v", got, tt.want)
 			}
 		})
@@ -100,9 +100,9 @@ func TestClaims_ValidateRoles(t *testing.T) {
 		Roles []string
 	}
 	type args struct {
-		configRoles         []string
-		configMatchAllRoles bool
-		l                   logger.Logger
+		allowedRoles  []string
+		matchAllRoles bool
+		l             logger.Logger
 	}
 	tests := []struct {
 		name    string
@@ -111,84 +111,84 @@ func TestClaims_ValidateRoles(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "expect valid if no config roles",
+			name: "expect valid if no allowed roles",
 			fields: fields{
 				Roles: []string{"Test.Role.1", "Test.Role.2"},
 			},
 			args: args{
-				configRoles:         []string{},
-				configMatchAllRoles: false,
-				l:                   l,
+				allowedRoles:  []string{},
+				matchAllRoles: false,
+				l:             l,
 			},
 			wantErr: false,
 		},
 		{
-			name: "expect valid if we match one config role",
+			name: "expect valid if we match one allowed role",
 			fields: fields{
 				Roles: []string{"Test.Role.1"},
 			},
 			args: args{
-				configRoles:         []string{"Test.Role.1"},
-				configMatchAllRoles: false,
-				l:                   l,
+				allowedRoles:  []string{"Test.Role.1"},
+				matchAllRoles: false,
+				l:             l,
 			},
 			wantErr: false,
 		},
 		{
-			name: "expect valid if we match one config role, configMatchAllRoles is false",
+			name: "expect valid if we match one allowed role, matchAllRoles is false",
 			fields: fields{
 				Roles: []string{"Test.Role.1"},
 			},
 			args: args{
-				configRoles:         []string{"Test.Role.1", "Test.Role.2"},
-				configMatchAllRoles: false,
-				l:                   l,
+				allowedRoles:  []string{"Test.Role.1", "Test.Role.2"},
+				matchAllRoles: false,
+				l:             l,
 			},
 			wantErr: false,
 		},
 		{
-			name: "expect invalid if we match only one config role but configMatchAllRoles is true",
+			name: "expect invalid if we match only one allowed role but matchAllRoles is true",
 			fields: fields{
 				Roles: []string{"Test.Role.1"},
 			},
 			args: args{
-				configRoles:         []string{"Test.Role.1", "Test.Role.2"},
-				configMatchAllRoles: true,
-				l:                   l,
+				allowedRoles:  []string{"Test.Role.1", "Test.Role.2"},
+				matchAllRoles: true,
+				l:             l,
 			},
 			wantErr: true,
 		},
 		{
-			name: "expect invalid if we have no roles but we have configRoles set",
+			name: "expect invalid if we have no roles but we have allowedRoles set",
 			fields: fields{
 				Roles: []string{},
 			},
 			args: args{
-				configRoles:         []string{"Test.Role.1", "Test.Role.2"},
-				configMatchAllRoles: true,
-				l:                   l,
+				allowedRoles:  []string{"Test.Role.1", "Test.Role.2"},
+				matchAllRoles: true,
+				l:             l,
 			},
 			wantErr: true,
 		},
 		{
-			name: "expect vailid if we have no roles and no configRoles set",
+			name: "expect vailid if we have no roles and no allowedRoles set",
 			fields: fields{
 				Roles: []string{},
 			},
 			args: args{
-				configRoles:         []string{},
-				configMatchAllRoles: true,
-				l:                   l,
+				allowedRoles:  []string{},
+				matchAllRoles: true,
+				l:             l,
 			},
 			wantErr: false,
 		},
 		{
-			name:   "expect invalid if our roles are nil and we have configRoles",
+			name:   "expect invalid if our roles are nil and we have allowedRoles",
 			fields: fields{},
 			args: args{
-				configRoles:         []string{"Test.Role.1", "Test.Role.2"},
-				configMatchAllRoles: false,
-				l:                   l,
+				allowedRoles:  []string{"Test.Role.1", "Test.Role.2"},
+				matchAllRoles: false,
+				l:             l,
 			},
 			wantErr: true,
 		},
@@ -203,7 +203,7 @@ func TestClaims_ValidateRoles(t *testing.T) {
 				Sub:   tt.fields.Sub,
 				Roles: tt.fields.Roles,
 			}
-			if err := claims.ValidateRoles(tt.args.configRoles, tt.args.configMatchAllRoles, tt.args.l); (err != nil) != tt.wantErr {
+			if err := claims.ValidateRoles(tt.args.allowedRoles, tt.args.matchAllRoles, tt.args.l); (err != nil) != tt.wantErr {
 				t.Errorf("Claims.ValidateRoles() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
