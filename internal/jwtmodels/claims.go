@@ -2,7 +2,9 @@ package jwtmodels
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/music-tribe/azadjwtvalidation/internal/logger"
 )
@@ -27,4 +29,35 @@ func (claims *Claims) IsValidForRole(configRole string, l logger.Logger) bool {
 	}
 
 	return false
+}
+
+func (claims *Claims) ValidateRoles(configRoles []string, configMatchAllRoles bool, l logger.Logger) error {
+	if claims.Roles != nil {
+		if len(configRoles) > 0 {
+			var allRolesValid = true
+			if !configMatchAllRoles {
+				allRolesValid = false
+			}
+
+			for _, role := range configRoles {
+				roleValid := claims.IsValidForRole(role, l)
+				if configMatchAllRoles && !roleValid {
+					allRolesValid = false
+					break
+				}
+				if !configMatchAllRoles && roleValid {
+					allRolesValid = true
+					break
+				}
+			}
+
+			if !allRolesValid {
+				l.Warn("missing correct role, found: " + strings.Join(claims.Roles, ",") + ", expected: " + strings.Join(configRoles, ","))
+				return errors.New("missing correct role")
+			}
+		}
+	} else if len(configRoles) > 0 {
+		return errors.New("missing correct role")
+	}
+	return nil
 }
