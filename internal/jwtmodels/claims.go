@@ -2,7 +2,9 @@ package jwtmodels
 
 import (
 	"encoding/json"
-	"log"
+	"fmt"
+
+	"github.com/music-tribe/azadjwtvalidation/internal/logger"
 )
 
 type Claims struct {
@@ -14,13 +16,13 @@ type Claims struct {
 	Roles []string    `json:"roles"`
 }
 
-func (claims *Claims) IsValidForRole(configRole string, debugLogger *log.Logger) bool {
+func (claims *Claims) IsValidForRole(configRole string, l logger.Logger) bool {
 	for _, parsedRole := range claims.Roles {
 		if parsedRole == configRole {
-			debugLogger.Println("Match:", parsedRole, configRole)
+			l.Debug(fmt.Sprintf("Match: parsedRole: %s, configRole: %s", parsedRole, configRole))
 			return true
 		} else {
-			debugLogger.Println("No match:", parsedRole, configRole)
+			l.Debug(fmt.Sprintf("No match: parsedRole: %s, configRole: %s", parsedRole, configRole))
 		}
 	}
 

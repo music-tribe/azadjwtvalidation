@@ -2,13 +2,13 @@ package jwtmodels
 
 import (
 	"encoding/json"
-	"io"
-	"log"
 	"testing"
+
+	"github.com/music-tribe/azadjwtvalidation/internal/logger"
 )
 
 func TestClaims_IsValidForRole(t *testing.T) {
-	debugLogger := log.New(io.Discard, "DEBUG: azure-jwt-token-validator: ", log.Ldate|log.Ltime|log.Lshortfile)
+	l := logger.NewStdLog("warn")
 	type fields struct {
 		Iat   json.Number
 		Exp   json.Number
@@ -18,8 +18,8 @@ func TestClaims_IsValidForRole(t *testing.T) {
 		Roles []string
 	}
 	type args struct {
-		configRole  string
-		debugLogger *log.Logger
+		configRole string
+		l          logger.Logger
 	}
 	tests := []struct {
 		name   string
@@ -33,8 +33,8 @@ func TestClaims_IsValidForRole(t *testing.T) {
 				Roles: []string{"Test.Role.1", "Test.Role.2"},
 			},
 			args: args{
-				configRole:  "Test.Role.1",
-				debugLogger: debugLogger,
+				configRole: "Test.Role.1",
+				l:          l,
 			},
 			want: true,
 		},
@@ -44,8 +44,8 @@ func TestClaims_IsValidForRole(t *testing.T) {
 				Roles: []string{"Test.Role.1", "Test.Role.2"},
 			},
 			args: args{
-				configRole:  "Test.Role.3",
-				debugLogger: debugLogger,
+				configRole: "Test.Role.3",
+				l:          l,
 			},
 			want: false,
 		},
@@ -55,8 +55,8 @@ func TestClaims_IsValidForRole(t *testing.T) {
 				Roles: []string{"Test.Role.1", "Test.Role.2"},
 			},
 			args: args{
-				configRole:  "",
-				debugLogger: debugLogger,
+				configRole: "",
+				l:          l,
 			},
 			want: false,
 		},
@@ -66,8 +66,8 @@ func TestClaims_IsValidForRole(t *testing.T) {
 				Roles: []string{},
 			},
 			args: args{
-				configRole:  "",
-				debugLogger: debugLogger,
+				configRole: "",
+				l:          l,
 			},
 			want: false,
 		},
@@ -82,7 +82,7 @@ func TestClaims_IsValidForRole(t *testing.T) {
 				Sub:   tt.fields.Sub,
 				Roles: tt.fields.Roles,
 			}
-			if got := claims.IsValidForRole(tt.args.configRole, tt.args.debugLogger); got != tt.want {
+			if got := claims.IsValidForRole(tt.args.configRole, tt.args.l); got != tt.want {
 				t.Errorf("Claims.IsValidForRole() = %v, want %v", got, tt.want)
 			}
 		})
