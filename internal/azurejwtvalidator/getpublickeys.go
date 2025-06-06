@@ -106,6 +106,7 @@ func (azjwt *AzureJwtValidator) verifyAndSetPublicKey(publicKey string) error {
 	if pubKey, ok := parsedKey.(*rsa.PublicKey); !ok {
 		return fmt.Errorf("unable to convert RSA public key")
 	} else {
+		// FIXME: should we be generating & storing the kid here?
 		azjwt.rsakeys["config_rsa"] = pubKey
 	}
 
