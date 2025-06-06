@@ -61,3 +61,22 @@ func (claims *Claims) ValidateRoles(allowedRoles []string, matchAllRoles bool, l
 	}
 	return nil
 }
+
+// FIXME: this should be the only public method
+func (claims *Claims) Validate(audience, issuer string, allowedRoles []string, matchAllRoles bool, l logger.Logger) error {
+	// We need to guarantee prior that audience and issuer are not blank
+	if !strings.Contains(audience, claims.Aud) {
+		return errors.New("token audience is wrong")
+	}
+
+	if claims.Iss != issuer {
+		return errors.New("wrong issuer")
+	}
+
+	err := claims.ValidateRoles(allowedRoles, matchAllRoles, l)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
