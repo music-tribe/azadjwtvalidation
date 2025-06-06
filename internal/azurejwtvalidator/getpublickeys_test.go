@@ -134,6 +134,8 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 		MatchAllRoles: true,
 	}
 
+	pub := generatePublicKey(t)
+
 	t.Run("expect error if we fail to get keys from url", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		l := logger.NewMockLogger(ctrl)
@@ -252,7 +254,6 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		l := logger.NewMockLogger(ctrl)
 
-		pub := generatePublicKey(t)
 		keys := jwtmodels.JWKSet{
 			Keys: []jwtmodels.JWK{
 				{
@@ -290,7 +291,6 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		l := logger.NewMockLogger(ctrl)
 
-		pub := generatePublicKey(t)
 		keys := jwtmodels.JWKSet{
 			Keys: []jwtmodels.JWK{
 				{
