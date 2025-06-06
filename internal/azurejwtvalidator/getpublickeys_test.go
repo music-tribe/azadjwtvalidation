@@ -135,6 +135,8 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 	}
 
 	pub := generatePublicKey(t)
+	kid, err := jwtmodels.GenerateJwkKid(pub)
+	require.NoError(t, err)
 
 	t.Run("expect error if we fail to get keys from url", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
@@ -257,7 +259,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 		keys := jwtmodels.JWKSet{
 			Keys: []jwtmodels.JWK{
 				{
-					Kid: "0bxzOoXqygO5AKM2rmZn1DQafGQCUJG8fdeiyJYCvbY",
+					Kid: kid,
 					Kty: "RSA",
 					Use: "sig",
 					N:   base64.RawURLEncoding.EncodeToString(pub.N.Bytes()),
@@ -294,7 +296,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 		keys := jwtmodels.JWKSet{
 			Keys: []jwtmodels.JWK{
 				{
-					Kid: "0bxzOoXqygO5AKM2rmZn1DQafGQCUJG8fdeiyJYCvbY",
+					Kid: kid,
 					Kty: "RSA",
 					Use: "sig",
 					N:   "not a number",
