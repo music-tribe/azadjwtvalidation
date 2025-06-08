@@ -16,7 +16,10 @@ import (
 )
 
 func (azjwt *AzureJwtValidator) GetPublicKeys(config *Config) error {
-	azjwt.verifyAndSetPublicKey(config.PublicKey)
+	err := azjwt.verifyAndSetPublicKey(config.PublicKey)
+	if err != nil {
+		return err
+	}
 
 	if strings.TrimSpace(config.KeysUrl) != "" {
 		var body jwtmodels.JWKSet

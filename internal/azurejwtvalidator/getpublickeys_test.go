@@ -138,6 +138,18 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 	kid, err := jwtmodels.GenerateJwkKid(pub)
 	require.NoError(t, err)
 
+	t.Run("expect error if verifyAndSetPublicKey fails", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		l := logger.NewMockLogger(ctrl)
+		configWithInvalidPublicKey := config
+		configWithInvalidPublicKey.PublicKey = "invalid public key"
+
+		azureJwtValidator := NewAzureJwtValidator(config, http.DefaultClient, l)
+		err := azureJwtValidator.GetPublicKeys(&configWithInvalidPublicKey)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "public key could not be decoded")
+	})
+
 	t.Run("expect error if we fail to get keys from url", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		l := logger.NewMockLogger(ctrl)
