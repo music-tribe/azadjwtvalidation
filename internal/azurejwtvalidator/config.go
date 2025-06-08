@@ -6,7 +6,7 @@ type Config struct {
 	PublicKey     string `validate:"required_without=KeysUrl"`
 	KeysUrl       string `validate:"required_without=PublicKey,omitempty,http_url"`
 	Issuer        string `validate:"required,http_url"`
-	Audience      string
+	Audience      string `validate:"required"`
 	Roles         []string
 	MatchAllRoles bool
 }
