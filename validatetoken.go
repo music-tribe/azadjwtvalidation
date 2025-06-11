@@ -21,6 +21,12 @@ import (
 	"time"
 
 	"github.com/music-tribe/azadjwtvalidation/internal/jwtmodels"
+	"github.com/music-tribe/azadjwtvalidation/internal/otelcollector"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
 )
 
 var rsakeys map[string]*rsa.PublicKey
@@ -76,6 +82,26 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 		return nil, fmt.Errorf("configuration incorrect, missing either a JWKS url or a static public key")
 	}
 
+	// FIXME: pass this in from config or default
+	serviceName := attribute.Key("azadjwtvalidation")
+	meterProvider, err := InitOtel(ctx, serviceName)
+	if err != nil {
+		LoggerWARN.Printf("failed to start azadjwtvalidation plugin! Disabling plugin: %v", err)
+		return nil, err
+	}
+	otel.SetMeterProvider(meterProvider)
+	defer func() {
+		if err := meterProvider.Shutdown(ctx); err != nil {
+			log.Fatalf("failed to shutdown MeterProvider: %s", err)
+		}
+	}()
+	// meter = meterProvider.Meter("github.com/music-tribe/azadjwtvalidation")
+	// forbiddenCount, err = meter.Int64Counter("forbiddenCount", metric.WithDescription("The number of times we return 403 forbidden responses"))
+	// if err != nil {
+	// 	LoggerWARN.Printf("failed to start azadjwtvalidation plugin! Disabling plugin: %v", err)
+	// 	return nil, err
+	// }
+
 	plugin := &AzureJwtPlugin{
 		next:   next,
 		config: config,
@@ -87,7 +113,7 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 	// Set up the initial public keys before we start
 	// Ensure we return an error if we fail
 	// This will disable the plugin & any routes dependent on the plugin: https://github.com/traefik/plugindemo?tab=readme-ov-file#usage
-	err := plugin.GetPublicKeys(config)
+	err = plugin.GetPublicKeys(config)
 	if err != nil {
 		LoggerWARN.Println("failed to start azadjwtvalidation plugin! Disabling plugin")
 		return nil, err
@@ -101,6 +127,16 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 }
 
 func (azureJwt *AzureJwtPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	// FIXME: what name should we use here?
+	name := "github.com/music-tribe/azadjwtvalidation"
+	meter := otel.Meter(name)
+
+	forbiddenCount, err := meter.Int64Counter("forbidden", metric.WithDescription("The number of times we return 403 forbidden responses"))
+	if err != nil {
+		// FIXME: set this up in a controlled way
+		log.Fatal(err)
+	}
+
 	tokenValid := false
 
 	token, err := azureJwt.ExtractToken(req)
@@ -136,7 +172,27 @@ func (azureJwt *AzureJwtPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Requ
 	} else {
 		LogHttp(LoggerWARN, "The token you provided is not valid. Please provide a valid token.", azureJwt.config.LogHeaders, http.StatusForbidden, req)
 		http.Error(rw, "The token you provided is not valid. Please provide a valid token.", http.StatusForbidden)
+		ctx := context.Background()
+		// forbiddenCount.Add(ctx, 1, metric.WithAttributes(commonAttrs...))
+		forbiddenCount.Add(ctx, 1)
 	}
+}
+
+func InitOtel(ctx context.Context, serviceName attribute.Key) (*sdkmetric.MeterProvider, error) {
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
+			attribute.KeyValue{Key: serviceName},
+		),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	meterProvider, err := otelcollector.InitPrometheusMeterProvider(ctx, res)
+	if err != nil {
+		return nil, err
+	}
+	return meterProvider, nil
 }
 
 func (azureJwt *AzureJwtPlugin) scheduleUpdateKeys(config *Config) {

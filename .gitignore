@@ -9,3 +9,6 @@
 **/results_junitxml_gosec.xml
 
 /.tools
+
+# Local plugins test dir
+**/traefik

@@ -46,3 +46,8 @@ race: tools mocks
 go_vuln:
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	govulncheck ./...
+
+# Useful for testing prometheus metrics
+# https://github.com/open-telemetry/opentelemetry-go-contrib/blob/main/examples/otel-collector/docker-compose.yaml
+prometheus:
+	docker run --name prometheus -d -p 127.0.0.1:9090:9090 prom/prometheus@v3.4.1

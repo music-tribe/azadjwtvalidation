@@ -13,6 +13,8 @@ experimental:
   localPlugins:
     azadjwtvalidation:
       moduleName: github.com/music-tribe/azadjwtvalidation
+      settings:
+        useUnsafe: true
 
 entryPoints:
   http:
