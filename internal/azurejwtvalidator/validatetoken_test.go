@@ -44,6 +44,32 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 		wantErrMsg string
 	}{
 		{
+			name: "expect invalid if token has expired",
+			fields: fields{
+				config: Config{
+					Audience: "test-audience",
+					Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					Roles:    []string{"Test.Role.1", "Test.Role.2"},
+				},
+				client: http.DefaultClient,
+				logger: l,
+				rsakeys: map[string]*rsa.PublicKey{
+					"test-key-id": pub,
+				},
+			},
+			args: args{
+				jwtToken: generateTestJwt(t,
+					time.Now().Add(-1*time.Hour),
+					[]string{"Test.Role.1", "Test.Role.2"},
+					"test-audience",
+					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					privateKey,
+					false),
+			},
+			wantErr:    true,
+			wantErrMsg: "token is expired",
+		},
+		{
 			name: "expect invalid if audience is wrong",
 			fields: fields{
 				config: Config{
@@ -63,7 +89,8 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					[]string{"Test.Role.1", "Test.Role.2"},
 					"wrong-audience",
 					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
-					privateKey),
+					privateKey,
+					true),
 			},
 			wantErr:    true,
 			wantErrMsg: "token audience is wrong",
@@ -88,7 +115,8 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					[]string{"Test.Role.1", "Test.Role.2"},
 					"test-audience",
 					"wrong-issuer",
-					privateKey),
+					privateKey,
+					true),
 			},
 			wantErr:    true,
 			wantErrMsg: "wrong issuer",
@@ -112,7 +140,8 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					[]string{"Test.Role.1", "Test.Role.2"},
 					"test-audience",
 					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
-					privateKey),
+					privateKey,
+					true),
 			},
 			wantErr: false,
 		},
@@ -136,7 +165,8 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					[]string{"Test.Role.1"},
 					"test-audience",
 					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
-					privateKey),
+					privateKey,
+					true),
 			},
 			wantErr: false,
 		},
@@ -160,7 +190,8 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					[]string{"Test.Role.1"},
 					"test-audience",
 					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
-					privateKey),
+					privateKey,
+					true),
 			},
 			wantErr: false,
 		},
@@ -185,7 +216,8 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					[]string{"Test.Role.1"},
 					"test-audience",
 					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
-					privateKey),
+					privateKey,
+					true),
 			},
 			wantErr:    true,
 			wantErrMsg: "missing correct role",
@@ -211,7 +243,8 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					[]string{},
 					"test-audience",
 					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
-					privateKey),
+					privateKey,
+					true),
 			},
 			wantErr:    true,
 			wantErrMsg: "missing correct role",
@@ -237,7 +270,8 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					[]string{},
 					"test-audience",
 					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
-					privateKey),
+					privateKey,
+					true),
 			},
 			wantErr: false,
 		},
@@ -262,7 +296,8 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					nil,
 					"test-audience",
 					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
-					privateKey),
+					privateKey,
+					true),
 			},
 			wantErr:    true,
 			wantErrMsg: "missing correct role",
@@ -292,7 +327,7 @@ type JwtClaim struct {
 	jwt.RegisteredClaims
 }
 
-func generateTestJwt(t *testing.T, expiresAt time.Time, roles []string, audience string, issuer string, privKey *rsa.PrivateKey) *jwtmodels.AzureJwt {
+func generateTestJwt(t *testing.T, expiresAt time.Time, roles []string, audience string, issuer string, privKey *rsa.PrivateKey, validateToken bool) *jwtmodels.AzureJwt {
 	testClaims := JwtClaim{
 		Roles: roles,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -311,13 +346,17 @@ func generateTestJwt(t *testing.T, expiresAt time.Time, roles []string, audience
 	require.NoError(t, errSignedString)
 	token.Signature = signedString
 
-	return convertToAzureJwt(t, signedString, &privKey.PublicKey)
+	return convertToAzureJwt(t, signedString, &privKey.PublicKey, validateToken)
 }
 
-func convertToAzureJwt(t *testing.T, tokenString string, pub *rsa.PublicKey) *jwtmodels.AzureJwt {
+func convertToAzureJwt(t *testing.T, tokenString string, pub *rsa.PublicKey, validateToken bool) *jwtmodels.AzureJwt {
+	parserOptions := []jwt.ParserOption{}
+	if !validateToken {
+		parserOptions = append(parserOptions, jwt.WithoutClaimsValidation())
+	}
 	token, err := jwt.ParseWithClaims(tokenString, &JwtClaim{}, func(token *jwt.Token) (any, error) {
 		return pub, nil
-	})
+	}, parserOptions...)
 	require.NoError(t, err)
 	claims, ok := token.Claims.(*JwtClaim)
 	require.True(t, ok)
