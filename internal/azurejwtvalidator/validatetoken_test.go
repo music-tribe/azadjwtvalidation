@@ -68,6 +68,205 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 			wantErr:    true,
 			wantErrMsg: "token audience is wrong",
 		},
+		{
+			name: "expect invalid if issuer is wrong",
+			fields: fields{
+				config: Config{
+					Audience: "test-audience",
+					Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					Roles:    []string{"Test.Role.1", "Test.Role.2"},
+				},
+				client: http.DefaultClient,
+				logger: l,
+				rsakeys: map[string]*rsa.PublicKey{
+					"test-key-id": pub,
+				},
+			},
+			args: args{
+				jwtToken: generateTestJwt(t,
+					time.Now().Add(1*time.Hour),
+					[]string{"Test.Role.1", "Test.Role.2"},
+					"test-audience",
+					"wrong-issuer",
+					privateKey),
+			},
+			wantErr:    true,
+			wantErrMsg: "wrong issuer",
+		},
+		{
+			name: "expect valid if no config roles",
+			fields: fields{
+				config: Config{
+					Audience: "test-audience",
+					Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+				},
+				client: http.DefaultClient,
+				logger: l,
+				rsakeys: map[string]*rsa.PublicKey{
+					"test-key-id": pub,
+				},
+			},
+			args: args{
+				jwtToken: generateTestJwt(t,
+					time.Now().Add(1*time.Hour),
+					[]string{"Test.Role.1", "Test.Role.2"},
+					"test-audience",
+					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					privateKey),
+			},
+			wantErr: false,
+		},
+		{
+			name: "expect valid if we match one config role",
+			fields: fields{
+				config: Config{
+					Audience: "test-audience",
+					Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					Roles:    []string{"Test.Role.1"},
+				},
+				client: http.DefaultClient,
+				logger: l,
+				rsakeys: map[string]*rsa.PublicKey{
+					"test-key-id": pub,
+				},
+			},
+			args: args{
+				jwtToken: generateTestJwt(t,
+					time.Now().Add(1*time.Hour),
+					[]string{"Test.Role.1"},
+					"test-audience",
+					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					privateKey),
+			},
+			wantErr: false,
+		},
+		{
+			name: "expect valid if we match one config role, matchAllRoles is false",
+			fields: fields{
+				config: Config{
+					Audience: "test-audience",
+					Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					Roles:    []string{"Test.Role.1", "Test.Role.2"},
+				},
+				client: http.DefaultClient,
+				logger: l,
+				rsakeys: map[string]*rsa.PublicKey{
+					"test-key-id": pub,
+				},
+			},
+			args: args{
+				jwtToken: generateTestJwt(t,
+					time.Now().Add(1*time.Hour),
+					[]string{"Test.Role.1"},
+					"test-audience",
+					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					privateKey),
+			},
+			wantErr: false,
+		},
+		{
+			name: "expect invalid if we match only one config role but matchAllRoles is true",
+			fields: fields{
+				config: Config{
+					Audience:      "test-audience",
+					Issuer:        "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					Roles:         []string{"Test.Role.1", "Test.Role.2"},
+					MatchAllRoles: true,
+				},
+				client: http.DefaultClient,
+				logger: l,
+				rsakeys: map[string]*rsa.PublicKey{
+					"test-key-id": pub,
+				},
+			},
+			args: args{
+				jwtToken: generateTestJwt(t,
+					time.Now().Add(1*time.Hour),
+					[]string{"Test.Role.1"},
+					"test-audience",
+					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					privateKey),
+			},
+			wantErr:    true,
+			wantErrMsg: "missing correct role",
+		},
+		{
+			name: "expect invalid if we have no roles but we have config roles set",
+			fields: fields{
+				config: Config{
+					Audience:      "test-audience",
+					Issuer:        "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					Roles:         []string{"Test.Role.1", "Test.Role.2"},
+					MatchAllRoles: true,
+				},
+				client: http.DefaultClient,
+				logger: l,
+				rsakeys: map[string]*rsa.PublicKey{
+					"test-key-id": pub,
+				},
+			},
+			args: args{
+				jwtToken: generateTestJwt(t,
+					time.Now().Add(1*time.Hour),
+					[]string{},
+					"test-audience",
+					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					privateKey),
+			},
+			wantErr:    true,
+			wantErrMsg: "missing correct role",
+		},
+		{
+			name: "expect vailid if we have no roles and no config roles set",
+			fields: fields{
+				config: Config{
+					Audience:      "test-audience",
+					Issuer:        "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					Roles:         []string{},
+					MatchAllRoles: true,
+				},
+				client: http.DefaultClient,
+				logger: l,
+				rsakeys: map[string]*rsa.PublicKey{
+					"test-key-id": pub,
+				},
+			},
+			args: args{
+				jwtToken: generateTestJwt(t,
+					time.Now().Add(1*time.Hour),
+					[]string{},
+					"test-audience",
+					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					privateKey),
+			},
+			wantErr: false,
+		},
+		{
+			name: "expect invalid if our roles are nil and we have config roles",
+			fields: fields{
+				config: Config{
+					Audience:      "test-audience",
+					Issuer:        "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					Roles:         []string{"Test.Role.1", "Test.Role.2"},
+					MatchAllRoles: true,
+				},
+				client: http.DefaultClient,
+				logger: l,
+				rsakeys: map[string]*rsa.PublicKey{
+					"test-key-id": pub,
+				},
+			},
+			args: args{
+				jwtToken: generateTestJwt(t,
+					time.Now().Add(1*time.Hour),
+					nil,
+					"test-audience",
+					"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+					privateKey),
+			},
+			wantErr:    true,
+			wantErrMsg: "missing correct role",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
