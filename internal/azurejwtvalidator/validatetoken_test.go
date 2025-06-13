@@ -394,3 +394,32 @@ func publicKeyToBytes(t *testing.T, pub *rsa.PublicKey) []byte {
 
 	return pubBytes
 }
+
+func TestAzureJwtValidator_ValidateToken(t *testing.T) {
+	t.Parallel()
+
+	l := logger.NewStdLog("warn")
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	t.Run("expect invalid if we have no matching public key", func(t *testing.T) {
+		azjwt := &AzureJwtValidator{
+			config: Config{
+				Audience: "test-audience",
+				Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+				Roles:    []string{"Test.Role.1", "Test.Role.2"},
+			},
+			client: http.DefaultClient,
+			logger: l,
+		}
+		err := azjwt.ValidateToken(generateTestJwt(t,
+			time.Now().Add(1*time.Hour),
+			[]string{"Test.Role.1", "Test.Role.2"},
+			"test-audience",
+			"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			privateKey,
+			true))
+		assert.Error(t, err)
+		assert.Equal(t, "invalid public key", err.Error(), "Expected error message does not match")
+	})
+}
