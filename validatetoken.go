@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/music-tribe/azadjwtvalidation/internal/jwtmodels"
+	"github.com/music-tribe/azadjwtvalidation/internal/logger"
 )
 
 var rsakeys map[string]*rsa.PublicKey
@@ -347,7 +348,7 @@ func (azureJwt *AzureJwtPlugin) validateClaims(parsedClaims *jwtmodels.Claims) e
 			}
 
 			for _, role := range azureJwt.config.Roles {
-				roleValid := parsedClaims.IsValidForRole(role, LoggerDEBUG)
+				roleValid := parsedClaims.IsValidForRole(role, logger.NewGoDebugLogWrapper(LoggerDEBUG))
 				if azureJwt.config.MatchAllRoles && !roleValid {
 					allRolesValid = false
 					break

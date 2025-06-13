@@ -2,7 +2,11 @@ package jwtmodels
 
 import (
 	"encoding/json"
-	"log"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/music-tribe/azadjwtvalidation/internal/logger"
 )
 
 type Claims struct {
@@ -14,15 +18,65 @@ type Claims struct {
 	Roles []string    `json:"roles"`
 }
 
-func (claims *Claims) IsValidForRole(configRole string, debugLogger *log.Logger) bool {
+func (claims *Claims) IsValidForRole(allowedRole string, l logger.Logger) bool {
 	for _, parsedRole := range claims.Roles {
-		if parsedRole == configRole {
-			debugLogger.Println("Match:", parsedRole, configRole)
+		if parsedRole == allowedRole {
+			l.Debug(fmt.Sprintf("Match: parsedRole: %s, allowedRole: %s", parsedRole, allowedRole))
 			return true
 		} else {
-			debugLogger.Println("No match:", parsedRole, configRole)
+			l.Debug(fmt.Sprintf("No match: parsedRole: %s, allowedRole: %s", parsedRole, allowedRole))
 		}
 	}
 
 	return false
+}
+
+func (claims *Claims) ValidateRoles(allowedRoles []string, matchAllRoles bool, l logger.Logger) error {
+	if claims.Roles != nil {
+		if len(allowedRoles) > 0 {
+			var allRolesValid = true
+			if !matchAllRoles {
+				allRolesValid = false
+			}
+
+			for _, role := range allowedRoles {
+				roleValid := claims.IsValidForRole(role, l)
+				if matchAllRoles && !roleValid {
+					allRolesValid = false
+					break
+				}
+				if !matchAllRoles && roleValid {
+					allRolesValid = true
+					break
+				}
+			}
+
+			if !allRolesValid {
+				l.Warn("missing correct role, found: " + strings.Join(claims.Roles, ",") + ", expected: " + strings.Join(allowedRoles, ","))
+				return errors.New("missing correct role")
+			}
+		}
+	} else if len(allowedRoles) > 0 {
+		return errors.New("missing correct role")
+	}
+	return nil
+}
+
+// FIXME: this should be the only public method
+func (claims *Claims) Validate(audience, issuer string, allowedRoles []string, matchAllRoles bool, l logger.Logger) error {
+	// We need to guarantee prior that audience and issuer are not blank
+	if !strings.Contains(audience, claims.Aud) {
+		return errors.New("token audience is wrong")
+	}
+
+	if claims.Iss != issuer {
+		return errors.New("wrong issuer")
+	}
+
+	err := claims.ValidateRoles(allowedRoles, matchAllRoles, l)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
