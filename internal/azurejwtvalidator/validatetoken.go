@@ -4,7 +4,6 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/music-tribe/azadjwtvalidation/internal/jwtmodels"
 )
 
+// ValidateToken checks we have a public key for this token's kid, verifies the signature, and checks the token's claims.
 func (azjwt *AzureJwtValidator) ValidateToken(token *jwtmodels.AzureJwt) error {
 	hash := sha256.Sum256(token.RawToken)
 
@@ -25,12 +25,6 @@ func (azjwt *AzureJwtValidator) ValidateToken(token *jwtmodels.AzureJwt) error {
 	}
 
 	if err := azjwt.verifyToken(token); err != nil {
-		return err
-	}
-
-	// FIXME: haven't we already go the Claims in the Payload?
-	var claims jwtmodels.Claims
-	if err := json.Unmarshal(token.RawPayload, &claims); err != nil {
 		return err
 	}
 
