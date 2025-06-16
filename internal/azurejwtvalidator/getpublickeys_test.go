@@ -26,6 +26,8 @@ func TestAzureJwtValidator_verifyAndSetPublicKey(t *testing.T) {
 	t.Parallel()
 
 	pub := generatePublicKey(t)
+	kid, err := jwtmodels.GenerateJwkKid(pub)
+	require.NoError(t, err)
 
 	config := Config{
 		KeysUrl:       "https://jwks.keys",
@@ -112,7 +114,7 @@ and some more`)
 		err = azureJwtValidator.verifyAndSetPublicKey(string(pubPEM))
 		assert.NoError(t, err)
 		assert.NotNil(t, azureJwtValidator.rsakeys)
-		assert.Equal(t, pub, azureJwtValidator.rsakeys["config_rsa"])
+		assert.Equal(t, pub, azureJwtValidator.rsakeys[kid])
 	})
 }
 

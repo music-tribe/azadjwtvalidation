@@ -15,6 +15,7 @@ import (
 	"github.com/music-tribe/azadjwtvalidation/internal/jwtmodels"
 )
 
+// FIXME: we already have the config on the azjwt instance so we shouldn't need to pass it in here
 func (azjwt *AzureJwtValidator) GetPublicKeys(config *Config) error {
 	err := azjwt.verifyAndSetPublicKey(config.PublicKey)
 	if err != nil {
@@ -109,8 +110,11 @@ func (azjwt *AzureJwtValidator) verifyAndSetPublicKey(publicKey string) error {
 	if pubKey, ok := parsedKey.(*rsa.PublicKey); !ok {
 		return fmt.Errorf("unable to convert RSA public key")
 	} else {
-		// FIXME: should we be generating & storing the kid here?
-		azjwt.rsakeys["config_rsa"] = pubKey
+		kid, err := jwtmodels.GenerateJwkKid(pubKey)
+		if err != nil {
+			return fmt.Errorf("failed to generate JWK kid: %v", err)
+		}
+		azjwt.rsakeys[kid] = pubKey
 	}
 
 	return nil
