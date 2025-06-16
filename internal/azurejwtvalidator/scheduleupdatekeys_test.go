@@ -3,10 +3,13 @@ package azurejwtvalidator
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
 	"io"
 	"math/big"
+	"net"
 	"net/http"
 	"testing"
 	"time"
@@ -168,4 +171,259 @@ func TestAzureJwtValidator_getPublicKeysWithBackoffRetry(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to retrieve keys. Response: , Body: ")
 	})
+}
+
+// Test we preserve public keys whilst periodically updating them so that token validation does not fail with 403s due to missing keys.
+func TestAzureJwtValidator_ScheduleUpdateKeysPreservesRsaKeys(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should not drop public keys during key updates", func(t *testing.T) {
+		// Generate a valid RSA public key and corresponding JWK
+		privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+		require.NoError(t, err)
+		pub := &privateKey.PublicKey
+		kid, err := jwtmodels.GenerateJwkKid(pub)
+		require.NoError(t, err)
+		keys := jwtmodels.JWKSet{
+			Keys: []jwtmodels.JWK{
+				{
+					Kid: kid,
+					Kty: "RSA",
+					Use: "sig",
+					N:   base64.RawURLEncoding.EncodeToString(pub.N.Bytes()),
+					E:   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(pub.E)).Bytes()),
+				},
+			},
+		}
+		keysBytes, err := json.Marshal(keys)
+		require.NoError(t, err)
+
+		// Setup a stub HTTP client that always returns the same keys
+		client := &http.Client{
+			Transport: newStubRoundTripperReadMultiple(
+				bytes.NewReader(keysBytes),
+				&http.Response{
+					Status:     http.StatusText(http.StatusOK),
+					StatusCode: http.StatusOK,
+				}),
+		}
+
+		azjwt := &AzureJwtValidator{
+			config: Config{
+				KeysUrl:  "https://login.microsoftonline.com/common/discovery/v2.0/keys",
+				Audience: "test-audience",
+				Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+				Roles:    []string{"Test.Role.1", "Test.Role.2"},
+			},
+			client: client,
+			logger: logger.NewStdLog("warn"),
+		}
+
+		// Preload keys
+		require.NoError(t, azjwt.GetPublicKeys())
+
+		// Setup test plugin and HTTP server
+		plugin := &testPlugin{
+			next: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("ok"))
+			}),
+			validator: azjwt,
+		}
+		server := http.Server{
+			Handler: plugin,
+		}
+		ln, err := newLocalListener()
+		require.NoError(t, err)
+		defer ln.Close()
+
+		go server.Serve(ln)
+		defer server.Close()
+
+		// Start ScheduleUpdateKeys in background
+		ctx, cancel := context.WithCancel(context.Background())
+		ticker := time.NewTicker(50 * time.Millisecond)
+		defer ticker.Stop()
+		go azjwt.ScheduleUpdateKeys(ctx, ticker)
+
+		// Generate a valid JWT signed with the private key
+		token := generateTestJwt(t,
+			time.Now().Add(1*time.Hour),
+			[]string{"Test.Role.1", "Test.Role.2"},
+			"test-audience",
+			"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			privateKey,
+			true)
+
+		// Send requests repeatedly while keys are being updated
+		clientHTTP := &http.Client{}
+		url := "http://" + ln.Addr().String()
+		for range 5 {
+			req, err := http.NewRequest("GET", url, nil)
+			require.NoError(t, err)
+			req.Header.Set("Authorization", "Bearer "+string(token.RawToken))
+			resp, err := clientHTTP.Do(req)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			resp.Body.Close()
+			time.Sleep(30 * time.Millisecond)
+		}
+
+		cancel()
+	})
+
+	t.Run("should return 403 if token is invalid", func(t *testing.T) {
+		// Generate a valid RSA public key and corresponding JWK
+		privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+		require.NoError(t, err)
+		pub := &privateKey.PublicKey
+		kid, err := jwtmodels.GenerateJwkKid(pub)
+		require.NoError(t, err)
+		keys := jwtmodels.JWKSet{
+			Keys: []jwtmodels.JWK{
+				{
+					Kid: kid,
+					Kty: "RSA",
+					Use: "sig",
+					N:   base64.RawURLEncoding.EncodeToString(pub.N.Bytes()),
+					E:   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(pub.E)).Bytes()),
+				},
+			},
+		}
+		keysBytes, err := json.Marshal(keys)
+		require.NoError(t, err)
+
+		// Setup a stub HTTP client that always returns the same keys
+		client := &http.Client{
+			Transport: newStubRoundTripperReadMultiple(
+				bytes.NewReader(keysBytes),
+				&http.Response{
+					Status:     http.StatusText(http.StatusOK),
+					StatusCode: http.StatusOK,
+				}),
+		}
+
+		azjwt := &AzureJwtValidator{
+			config: Config{
+				KeysUrl:  "https://login.microsoftonline.com/common/discovery/v2.0/keys",
+				Audience: "test-audience",
+				Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+				Roles:    []string{"Test.Role.1", "Test.Role.2"},
+			},
+			client: client,
+			logger: logger.NewStdLog("warn"),
+		}
+
+		// Preload keys
+		require.NoError(t, azjwt.GetPublicKeys())
+
+		// Setup test plugin and HTTP server
+		plugin := &testPlugin{
+			next: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("ok"))
+			}),
+			validator: azjwt,
+		}
+		server := http.Server{
+			Handler: plugin,
+		}
+		ln, err := newLocalListener()
+		require.NoError(t, err)
+		defer ln.Close()
+
+		go server.Serve(ln)
+		defer server.Close()
+
+		// Start ScheduleUpdateKeys in background
+		ctx, cancel := context.WithCancel(context.Background())
+		ticker := time.NewTicker(50 * time.Millisecond)
+		defer ticker.Stop()
+		go azjwt.ScheduleUpdateKeys(ctx, ticker)
+
+		// Generate an invalid JWT (e.g., with wrong audience)
+		token := generateTestJwt(t,
+			time.Now().Add(1*time.Hour),
+			[]string{"Test.Role.1", "Test.Role.2"},
+			"wrong-audience",
+			"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			privateKey,
+			true)
+
+		// Send requests repeatedly while keys are being updated
+		clientHTTP := &http.Client{}
+		url := "http://" + ln.Addr().String()
+		for range 5 {
+			req, err := http.NewRequest("GET", url, nil)
+			require.NoError(t, err)
+			req.Header.Set("Authorization", "Bearer "+string(token.RawToken))
+			resp, err := clientHTTP.Do(req)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+			resp.Body.Close()
+			time.Sleep(30 * time.Millisecond)
+		}
+
+		cancel()
+	})
+}
+
+type testPlugin struct {
+	next      http.Handler
+	validator *AzureJwtValidator
+}
+
+func (p *testPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	tokenValid := false
+
+	token, err := p.validator.ExtractToken(req)
+
+	if err == nil {
+		valerr := p.validator.ValidateToken(token)
+		if valerr == nil {
+			tokenValid = true
+		}
+	} else {
+		errMsg := ""
+
+		switch err.Error() {
+		case "no authorization header":
+			errMsg = "No token provided. Please use Authorization header to pass a valid token."
+		case "not bearer auth scheme":
+			errMsg = "Token provided on Authorization header is not a bearer token. Please provide a valid bearer token."
+		case "invalid token format":
+			errMsg = "The format of the bearer token provided on Authorization header is invalid. Please provide a valid bearer token."
+		case "invalid token":
+			errMsg = "The token provided is invalid. Please provide a valid bearer token."
+		}
+
+		http.Error(rw, errMsg, http.StatusUnauthorized)
+	}
+
+	if tokenValid {
+		p.next.ServeHTTP(rw, req)
+	} else {
+		http.Error(rw, "The token you provided is not valid. Please provide a valid token.", http.StatusForbidden)
+	}
+}
+func newLocalListener() (net.Listener, error) {
+	return net.Listen("tcp", "127.0.0.1:0")
+}
+
+type stubRoundTripperReadMultiple struct {
+	body     io.ReadSeeker
+	response *http.Response
+}
+
+func newStubRoundTripperReadMultiple(body io.ReadSeeker, response *http.Response) *stubRoundTripperReadMultiple {
+	return &stubRoundTripperReadMultiple{body, response}
+}
+
+func (sr *stubRoundTripperReadMultiple) RoundTrip(req *http.Request) (*http.Response, error) {
+	_, err := sr.body.Seek(0, 0)
+	if err != nil {
+		return nil, err
+	}
+	sr.response.Body = io.NopCloser(sr.body)
+	return sr.response, nil
 }
