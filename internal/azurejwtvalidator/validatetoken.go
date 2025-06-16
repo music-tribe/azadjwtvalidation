@@ -28,6 +28,7 @@ func (azjwt *AzureJwtValidator) ValidateToken(token *jwtmodels.AzureJwt) error {
 		return err
 	}
 
+	// FIXME: haven't we already go the Claims in the Payload?
 	var claims jwtmodels.Claims
 	if err := json.Unmarshal(token.RawPayload, &claims); err != nil {
 		return err

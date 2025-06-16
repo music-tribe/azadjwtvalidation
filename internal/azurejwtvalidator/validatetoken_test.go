@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"net/http"
+	"net/http/httptest"
 	"strconv"
 	"testing"
 	"time"
@@ -324,23 +325,26 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 
 type JwtClaim struct {
 	Roles []string
-	jwt.RegisteredClaims
+	jwt.StandardClaims
 }
 
 func generateTestJwt(t *testing.T, expiresAt time.Time, roles []string, audience string, issuer string, privKey *rsa.PrivateKey, validateToken bool) *jwtmodels.AzureJwt {
 	testClaims := JwtClaim{
 		Roles: roles,
-		RegisteredClaims: jwt.RegisteredClaims{
+		//lint:ignore SA1019 FIXME at a later date. Use RegisteredClaims: https://pkg.go.dev/github.com/golang-jwt/jwt/v4@v4.4.2#example-NewWithClaims-CustomClaimsType
+		StandardClaims: jwt.StandardClaims{
 			Issuer:    issuer,
-			Audience:  jwt.ClaimStrings{audience},
-			ExpiresAt: jwt.NewNumericDate(expiresAt),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Audience:  audience,
+			ExpiresAt: expiresAt.Unix(),
+			IssuedAt:  time.Now().Unix(),
 			Subject:   "test-subject",
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, testClaims)
-	token.Header["kid"] = publicKeyToBytes(t, &privKey.PublicKey)
+	kid, err := jwtmodels.GenerateJwkKid(&privKey.PublicKey)
+	require.NoError(t, err)
+	token.Header["kid"] = kid
 
 	signedString, errSignedString := token.SignedString(privKey)
 	require.NoError(t, errSignedString)
@@ -361,17 +365,13 @@ func convertToAzureJwt(t *testing.T, tokenString string, pub *rsa.PublicKey, val
 	claims, ok := token.Claims.(*JwtClaim)
 	require.True(t, ok)
 
-	aud := ""
-	if len(claims.Audience) != 0 {
-		aud = claims.Audience[0] // Use the first audience if multiple are present
-	}
 	azureJwt := &jwtmodels.AzureJwt{
 		Header: jwtmodels.AzureJwtHeader{Alg: "RS256", Kid: token.Header["kid"].(string), Typ: "JWT"},
 		Payload: jwtmodels.Claims{
-			Iat:   json.Number(strconv.FormatInt(claims.IssuedAt.Unix(), 10)),
-			Exp:   json.Number(strconv.FormatInt(claims.ExpiresAt.Unix(), 10)),
+			Iat:   json.Number(strconv.FormatInt(claims.IssuedAt, 10)),
+			Exp:   json.Number(strconv.FormatInt(claims.ExpiresAt, 10)),
 			Iss:   claims.Issuer,
-			Aud:   aud,
+			Aud:   claims.Audience,
 			Sub:   claims.Subject,
 			Roles: claims.Roles,
 		},
@@ -421,5 +421,338 @@ func TestAzureJwtValidator_ValidateToken(t *testing.T) {
 			true))
 		assert.Error(t, err)
 		assert.Equal(t, "invalid public key", err.Error(), "Expected error message does not match")
+	})
+
+	t.Run("expect invalid if we use a different private key to sign that doesn't match our public keys", func(t *testing.T) {
+		config := Config{
+			PublicKey: string(publicKeyToBytes(t, &privateKey.PublicKey)),
+			Audience:  "test-audience",
+			Issuer:    "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			Roles:     []string{"Test.Role.1", "Test.Role.2"},
+		}
+		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
+		err := azjwt.GetPublicKeys()
+		require.NoError(t, err)
+
+		// Use a different private key to sign the token
+		otherPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+		require.NoError(t, err)
+		token := generateTestJwt(t,
+			time.Now().Add(1*time.Hour),
+			[]string{"Test.Role.1", "Test.Role.2"},
+			"test-audience",
+			"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			otherPrivateKey,
+			true)
+		request := httptest.NewRequest("GET", "/testtoken", nil)
+		request.Header.Set("Authorization", "Bearer "+string(token.RawToken))
+		extractedToken, err := azjwt.ExtractToken(request)
+		require.NoError(t, err)
+		err = azjwt.ValidateToken(extractedToken)
+		assert.Error(t, err)
+		assert.Equal(t, "invalid public key", err.Error(), "Expected error message does not match")
+	})
+
+	t.Run("expect invalid if we can't verify the token", func(t *testing.T) {
+		config := Config{
+			PublicKey: string(publicKeyToBytes(t, &privateKey.PublicKey)),
+			Audience:  "test-audience",
+			Issuer:    "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			Roles:     []string{"Test.Role.1", "Test.Role.2"},
+		}
+		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
+		err := azjwt.GetPublicKeys()
+		require.NoError(t, err)
+
+		// Use a different private key to sign the token
+		otherPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+		require.NoError(t, err)
+		token := generateTestJwt(t,
+			time.Now().Add(1*time.Hour),
+			[]string{"Test.Role.1", "Test.Role.2"},
+			"test-audience",
+			"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			otherPrivateKey,
+			true)
+		request := httptest.NewRequest("GET", "/testtoken", nil)
+		request.Header.Set("Authorization", "Bearer "+string(token.RawToken))
+		extractedToken, err := azjwt.ExtractToken(request)
+		require.NoError(t, err)
+
+		// Set up an invalid public key to simulate a verification failure
+		azjwt.rsakeys[token.Header.Kid] = &privateKey.PublicKey
+
+		err = azjwt.ValidateToken(extractedToken)
+		assert.Error(t, err)
+		assert.Equal(t, "crypto/rsa: verification error", err.Error(), "Expected error message does not match")
+	})
+
+	t.Run("expect invalid if token has expired", func(t *testing.T) {
+		config := Config{
+			PublicKey: string(publicKeyToBytes(t, &privateKey.PublicKey)),
+			Audience:  "test-audience",
+			Issuer:    "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			Roles:     []string{"Test.Role.1", "Test.Role.2"},
+		}
+		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
+		err := azjwt.GetPublicKeys()
+		require.NoError(t, err)
+
+		token := generateTestJwt(t,
+			time.Now().Add(-1*time.Hour),
+			[]string{"Test.Role.1", "Test.Role.2"},
+			"test-audience",
+			"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			privateKey,
+			false)
+		request := httptest.NewRequest("GET", "/testtoken", nil)
+		request.Header.Set("Authorization", "Bearer "+string(token.RawToken))
+		extractedToken, err := azjwt.ExtractToken(request)
+		require.NoError(t, err)
+		err = azjwt.ValidateToken(extractedToken)
+		assert.Error(t, err)
+		assert.Equal(t, "token is expired", err.Error(), "Expected error message does not match")
+	})
+
+	t.Run("expect invalid if audience is wrong", func(t *testing.T) {
+		config := Config{
+			PublicKey: string(publicKeyToBytes(t, &privateKey.PublicKey)),
+			Audience:  "test-audience",
+			Issuer:    "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			Roles:     []string{"Test.Role.1", "Test.Role.2"},
+		}
+		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
+		err := azjwt.GetPublicKeys()
+		require.NoError(t, err)
+
+		token := generateTestJwt(t,
+			time.Now().Add(1*time.Hour),
+			[]string{"Test.Role.1", "Test.Role.2"},
+			"wrong-audience",
+			"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			privateKey,
+			true)
+		request := httptest.NewRequest("GET", "/testtoken", nil)
+		request.Header.Set("Authorization", "Bearer "+string(token.RawToken))
+		extractedToken, err := azjwt.ExtractToken(request)
+		require.NoError(t, err)
+		err = azjwt.ValidateToken(extractedToken)
+		assert.Error(t, err)
+		assert.Equal(t, "token audience is wrong", err.Error(), "Expected error message does not match")
+	})
+
+	t.Run("expect invalid if issuer is wrong", func(t *testing.T) {
+		config := Config{
+			PublicKey: string(publicKeyToBytes(t, &privateKey.PublicKey)),
+			Audience:  "test-audience",
+			Issuer:    "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			Roles:     []string{"Test.Role.1", "Test.Role.2"},
+		}
+		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
+		err := azjwt.GetPublicKeys()
+		require.NoError(t, err)
+
+		token := generateTestJwt(t,
+			time.Now().Add(1*time.Hour),
+			[]string{"Test.Role.1", "Test.Role.2"},
+			"test-audience",
+			"wrong-issuer",
+			privateKey,
+			true)
+		request := httptest.NewRequest("GET", "/testtoken", nil)
+		request.Header.Set("Authorization", "Bearer "+string(token.RawToken))
+		extractedToken, err := azjwt.ExtractToken(request)
+		require.NoError(t, err)
+		err = azjwt.ValidateToken(extractedToken)
+		assert.Error(t, err)
+		assert.Equal(t, "wrong issuer", err.Error(), "Expected error message does not match")
+	})
+
+	t.Run("expect valid if no config roles", func(t *testing.T) {
+		config := Config{
+			PublicKey: string(publicKeyToBytes(t, &privateKey.PublicKey)),
+			Audience:  "test-audience",
+			Issuer:    "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+		}
+		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
+		err := azjwt.GetPublicKeys()
+		require.NoError(t, err)
+
+		token := generateTestJwt(t,
+			time.Now().Add(1*time.Hour),
+			[]string{"Test.Role.1", "Test.Role.2"},
+			"test-audience",
+			"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			privateKey,
+			true)
+		request := httptest.NewRequest("GET", "/testtoken", nil)
+		request.Header.Set("Authorization", "Bearer "+string(token.RawToken))
+		extractedToken, err := azjwt.ExtractToken(request)
+		require.NoError(t, err)
+		err = azjwt.ValidateToken(extractedToken)
+		assert.NoError(t, err)
+	})
+
+	t.Run("expect valid if we match one config role", func(t *testing.T) {
+		config := Config{
+			PublicKey: string(publicKeyToBytes(t, &privateKey.PublicKey)),
+			Audience:  "test-audience",
+			Issuer:    "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			Roles:     []string{"Test.Role.1"},
+		}
+		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
+		err := azjwt.GetPublicKeys()
+		require.NoError(t, err)
+
+		token := generateTestJwt(t,
+			time.Now().Add(1*time.Hour),
+			[]string{"Test.Role.1"},
+			"test-audience",
+			"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			privateKey,
+			true)
+		request := httptest.NewRequest("GET", "/testtoken", nil)
+		request.Header.Set("Authorization", "Bearer "+string(token.RawToken))
+		extractedToken, err := azjwt.ExtractToken(request)
+		require.NoError(t, err)
+		err = azjwt.ValidateToken(extractedToken)
+		assert.NoError(t, err)
+	})
+
+	t.Run("expect valid if we match one config role, matchAllRoles is false", func(t *testing.T) {
+		config := Config{
+			PublicKey: string(publicKeyToBytes(t, &privateKey.PublicKey)),
+			Audience:  "test-audience",
+			Issuer:    "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			Roles:     []string{"Test.Role.1", "Test.Role.2"},
+		}
+		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
+		err := azjwt.GetPublicKeys()
+		require.NoError(t, err)
+
+		token := generateTestJwt(t,
+			time.Now().Add(1*time.Hour),
+			[]string{"Test.Role.1"},
+			"test-audience",
+			"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			privateKey,
+			true)
+		request := httptest.NewRequest("GET", "/testtoken", nil)
+		request.Header.Set("Authorization", "Bearer "+string(token.RawToken))
+		extractedToken, err := azjwt.ExtractToken(request)
+		require.NoError(t, err)
+		err = azjwt.ValidateToken(extractedToken)
+		assert.NoError(t, err)
+	})
+
+	t.Run("expect invalid if we match only one config role but matchAllRoles is true", func(t *testing.T) {
+		config := Config{
+			PublicKey:     string(publicKeyToBytes(t, &privateKey.PublicKey)),
+			Audience:      "test-audience",
+			Issuer:        "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			Roles:         []string{"Test.Role.1", "Test.Role.2"},
+			MatchAllRoles: true,
+		}
+		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
+		err := azjwt.GetPublicKeys()
+		require.NoError(t, err)
+
+		token := generateTestJwt(t,
+			time.Now().Add(1*time.Hour),
+			[]string{"Test.Role.1"},
+			"test-audience",
+			"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			privateKey,
+			true)
+		request := httptest.NewRequest("GET", "/testtoken", nil)
+		request.Header.Set("Authorization", "Bearer "+string(token.RawToken))
+		extractedToken, err := azjwt.ExtractToken(request)
+		require.NoError(t, err)
+		err = azjwt.ValidateToken(extractedToken)
+		assert.Error(t, err)
+		assert.Equal(t, "missing correct role", err.Error(), "Expected error message does not match")
+	})
+
+	t.Run("expect invalid if we have no roles but we have config roles set", func(t *testing.T) {
+		config := Config{
+			PublicKey:     string(publicKeyToBytes(t, &privateKey.PublicKey)),
+			Audience:      "test-audience",
+			Issuer:        "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			Roles:         []string{"Test.Role.1", "Test.Role.2"},
+			MatchAllRoles: true,
+		}
+		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
+		err := azjwt.GetPublicKeys()
+		require.NoError(t, err)
+
+		token := generateTestJwt(t,
+			time.Now().Add(1*time.Hour),
+			[]string{},
+			"test-audience",
+			"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			privateKey,
+			true)
+		request := httptest.NewRequest("GET", "/testtoken", nil)
+		request.Header.Set("Authorization", "Bearer "+string(token.RawToken))
+		extractedToken, err := azjwt.ExtractToken(request)
+		require.NoError(t, err)
+		err = azjwt.ValidateToken(extractedToken)
+		assert.Error(t, err)
+		assert.Equal(t, "missing correct role", err.Error(), "Expected error message does not match")
+	})
+
+	t.Run("expect vailid if we have no roles and no config roles set", func(t *testing.T) {
+		config := Config{
+			PublicKey:     string(publicKeyToBytes(t, &privateKey.PublicKey)),
+			Audience:      "test-audience",
+			Issuer:        "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			Roles:         []string{},
+			MatchAllRoles: true,
+		}
+		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
+		err := azjwt.GetPublicKeys()
+		require.NoError(t, err)
+
+		token := generateTestJwt(t,
+			time.Now().Add(1*time.Hour),
+			[]string{},
+			"test-audience",
+			"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			privateKey,
+			true)
+		request := httptest.NewRequest("GET", "/testtoken", nil)
+		request.Header.Set("Authorization", "Bearer "+string(token.RawToken))
+		extractedToken, err := azjwt.ExtractToken(request)
+		require.NoError(t, err)
+		err = azjwt.ValidateToken(extractedToken)
+		assert.NoError(t, err)
+	})
+
+	t.Run("expect invalid if our roles are nil and we have config roles set", func(t *testing.T) {
+		config := Config{
+			PublicKey:     string(publicKeyToBytes(t, &privateKey.PublicKey)),
+			Audience:      "test-audience",
+			Issuer:        "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			Roles:         []string{"Test.Role.1", "Test.Role.2"},
+			MatchAllRoles: true,
+		}
+		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
+		err := azjwt.GetPublicKeys()
+		require.NoError(t, err)
+
+		token := generateTestJwt(t,
+			time.Now().Add(1*time.Hour),
+			nil,
+			"test-audience",
+			"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+			privateKey,
+			true)
+		request := httptest.NewRequest("GET", "/testtoken", nil)
+		request.Header.Set("Authorization", "Bearer "+string(token.RawToken))
+		extractedToken, err := azjwt.ExtractToken(request)
+		require.NoError(t, err)
+		err = azjwt.ValidateToken(extractedToken)
+		assert.Error(t, err)
+		assert.Equal(t, "missing correct role", err.Error(), "Expected error message does not match")
 	})
 }
