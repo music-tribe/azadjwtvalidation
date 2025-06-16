@@ -15,25 +15,25 @@ import (
 	"github.com/music-tribe/azadjwtvalidation/internal/jwtmodels"
 )
 
-func (azjwt *AzureJwtValidator) GetPublicKeys(config *Config) error {
-	err := azjwt.verifyAndSetPublicKey(config.PublicKey)
+func (azjwt *AzureJwtValidator) GetPublicKeys() error {
+	err := azjwt.verifyAndSetPublicKey(azjwt.config.PublicKey)
 	if err != nil {
 		return err
 	}
 
-	if strings.TrimSpace(config.KeysUrl) != "" {
+	if strings.TrimSpace(azjwt.config.KeysUrl) != "" {
 		var body jwtmodels.JWKSet
-		resp, err := azjwt.client.Get(config.KeysUrl)
+		resp, err := azjwt.client.Get(azjwt.config.KeysUrl)
 
 		if err != nil {
-			e := fmt.Errorf("failed to load public key from:%v", config.KeysUrl)
+			e := fmt.Errorf("failed to load public key from:%v", azjwt.config.KeysUrl)
 			azjwt.logger.Warn(e.Error())
 			return e
 		}
 		defer resp.Body.Close()
 		bytes, err := io.ReadAll(resp.Body)
 		if err != nil {
-			e := fmt.Errorf("failed to read response body from:%v", config.KeysUrl)
+			e := fmt.Errorf("failed to read response body from:%v", azjwt.config.KeysUrl)
 			azjwt.logger.Warn(e.Error())
 			return e
 		}
@@ -54,7 +54,7 @@ func (azjwt *AzureJwtValidator) GetPublicKeys(config *Config) error {
 		keys := body.Keys
 
 		if len(keys) == 0 {
-			e := fmt.Errorf("failed to load public key. No keys found from:%v", config.KeysUrl)
+			e := fmt.Errorf("failed to load public key. No keys found from:%v", azjwt.config.KeysUrl)
 			azjwt.logger.Warn(e.Error())
 			return e
 		}
@@ -109,8 +109,11 @@ func (azjwt *AzureJwtValidator) verifyAndSetPublicKey(publicKey string) error {
 	if pubKey, ok := parsedKey.(*rsa.PublicKey); !ok {
 		return fmt.Errorf("unable to convert RSA public key")
 	} else {
-		// FIXME: should we be generating & storing the kid here?
-		azjwt.rsakeys["config_rsa"] = pubKey
+		kid, err := jwtmodels.GenerateJwkKid(pubKey)
+		if err != nil {
+			return fmt.Errorf("failed to generate JWK kid: %v", err)
+		}
+		azjwt.rsakeys[kid] = pubKey
 	}
 
 	return nil
