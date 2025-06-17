@@ -16,7 +16,7 @@ func (azjwt *AzureJwtValidator) ValidateToken(token *jwtmodels.AzureJwt) error {
 	hash := sha256.Sum256(token.RawToken)
 
 	pub, ok := azjwt.rsakeys.Get(token.Header.Kid)
-	if !ok {
+	if !ok || pub == nil {
 		return errors.New("invalid public key")
 	}
 
