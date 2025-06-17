@@ -110,6 +110,33 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 		azjwt.ScheduleUpdateKeys(ctx, ticker)
 		assert.Empty(t, azjwt.rsakeys)
 	})
+
+	t.Run("expect to retry if we get a transient error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ml := logger.NewMockLogger(ctrl)
+		azjwt := &AzureJwtValidator{
+			config: Config{
+				KeysUrl:                      "https://jwks.keys",
+				Audience:                     "test-audience",
+				Issuer:                       "https://issuer.test",
+				Roles:                        []string{"Test.Role.1", "Test.Role.2"},
+				UpdateKeysEveryMinutes:       1,
+				UpdateKeysWithBackoffRetries: 1,
+			},
+			client: http.DefaultClient,
+			logger: ml,
+		}
+
+		ml.EXPECT().Warn("failed to load public key from:https://jwks.keys").AnyTimes()
+		ml.EXPECT().Warn("ScheduleUpdateKeys: failed to get public keys after 1 retries: failed to load public key from:https://jwks.keys").AnyTimes()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 900*time.Millisecond)
+		defer cancel()
+		ticker := time.NewTicker(500 * time.Millisecond)
+
+		azjwt.ScheduleUpdateKeys(ctx, ticker)
+		assert.Empty(t, azjwt.rsakeys)
+	})
 }
 
 func TestAzureJwtValidator_getPublicKeysWithBackoffRetry(t *testing.T) {
