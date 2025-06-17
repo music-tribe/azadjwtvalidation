@@ -468,3 +468,64 @@ func TestAzureJwtValidator_getPublicKeysWithBackoffRetry(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to retrieve keys. Response: , Body: ")
 	})
 }
+
+func TestAzureJwtValidator_GetPublicKeysWithOptionalBackoffRetry(t *testing.T) {
+	t.Run("expect to retry if we get a transient error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ml := logger.NewMockLogger(ctrl)
+		azjwt := &AzureJwtValidator{
+			config: Config{
+				KeysUrl:                      "https://jwks.keys",
+				Audience:                     "test-audience",
+				Issuer:                       "https://issuer.test",
+				Roles:                        []string{"Test.Role.1", "Test.Role.2"},
+				UpdateKeysEveryMinutes:       1,
+				UpdateKeysWithBackoffRetries: 3,
+			},
+			client: &http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						StatusCode: http.StatusServiceUnavailable,
+					},
+					nil),
+			},
+			logger:  ml,
+			rsakeys: NewPublicKeys(),
+		}
+
+		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(3)
+		ml.EXPECT().Warn("failed to get public keys after 3 retries: failed to retrieve keys. Response: , Body: ").Times(1)
+
+		azjwt.GetPublicKeysWithOptionalBackoffRetry(context.TODO())
+		assert.True(t, azjwt.rsakeys.Len() == 0, "expected no public keys to be loaded")
+	})
+
+	t.Run("expect to not retry if we don't set backoff retries", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ml := logger.NewMockLogger(ctrl)
+		azjwt := &AzureJwtValidator{
+			config: Config{
+				KeysUrl:                "https://jwks.keys",
+				Audience:               "test-audience",
+				Issuer:                 "https://issuer.test",
+				Roles:                  []string{"Test.Role.1", "Test.Role.2"},
+				UpdateKeysEveryMinutes: 1,
+			},
+			client: &http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						StatusCode: http.StatusServiceUnavailable,
+					},
+					nil),
+			},
+			logger:  ml,
+			rsakeys: NewPublicKeys(),
+		}
+
+		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(1)
+		ml.EXPECT().Warn("failed to get public keys after 0 retries: failed to retrieve keys. Response: , Body: ").Times(1)
+
+		azjwt.GetPublicKeysWithOptionalBackoffRetry(context.TODO())
+		assert.True(t, azjwt.rsakeys.Len() == 0, "expected no public keys to be loaded")
+	})
+}

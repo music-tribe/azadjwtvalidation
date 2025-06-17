@@ -17,6 +17,32 @@ import (
 	"github.com/music-tribe/azadjwtvalidation/internal/jwtmodels"
 )
 
+// Get public keys. Will retry if Config.UpdateKeysWithBackoffRetries is set.
+// If Config.UpdateKeysWithBackoffRetries is set to 0, it will not retry and will return an error if the keys cannot be retrieved.
+// If Config.UpdateKeysWithBackoffRetries is set to a positive number, it will retry that many times with exponential backoff.
+func (azjwt *AzureJwtValidator) GetPublicKeysWithOptionalBackoffRetry(ctx context.Context) error {
+	withBackoffOperation := func() error {
+		return azjwt.getPublicKeysWithBackoffRetry(ctx)
+	}
+	withoutBackoffOperation := func() error {
+		return azjwt.GetPublicKeys()
+	}
+
+	var operation func() error
+	if azjwt.config.UpdateKeysWithBackoffRetries > 0 {
+		operation = withBackoffOperation
+	} else {
+		operation = withoutBackoffOperation
+	}
+
+	err := operation()
+	if err != nil {
+		azjwt.logger.Warn(fmt.Sprintf("failed to get public keys after %d retries: %v", azjwt.config.UpdateKeysWithBackoffRetries, err))
+	}
+	return err
+}
+
+// FIXME: this doesn't need to be public
 func (azjwt *AzureJwtValidator) GetPublicKeys() error {
 	err := azjwt.verifyAndSetPublicKey(azjwt.config.PublicKey)
 	if err != nil {
