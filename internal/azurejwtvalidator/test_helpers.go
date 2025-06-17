@@ -37,12 +37,13 @@ func newStubRoundTripperReadMultiple(body io.ReadSeeker, response *http.Response
 }
 
 func (sr *stubRoundTripperReadMultiple) RoundTrip(req *http.Request) (*http.Response, error) {
-	_, err := sr.body.Seek(0, 0)
-	if err != nil {
+	if _, err := sr.body.Seek(0, io.SeekStart); err != nil {
 		return nil, err
 	}
-	sr.response.Body = io.NopCloser(sr.body)
-	return sr.response, nil
+	// Defensive copy to avoid data races when the stub is reused.
+	resp := *sr.response
+	resp.Body = io.NopCloser(sr.body)
+	return &resp, nil
 }
 
 // testPlugin mimics the traefik middleware and uses AzureJwtValidator to validate JWT tokens in HTTP requests.
