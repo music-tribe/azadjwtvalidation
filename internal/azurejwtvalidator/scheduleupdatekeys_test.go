@@ -101,12 +101,20 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 				Roles:                  []string{"Test.Role.1", "Test.Role.2"},
 				UpdateKeysEveryMinutes: 1,
 			},
-			client:  http.DefaultClient,
+			client: &http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						StatusCode: http.StatusServiceUnavailable,
+					},
+					nil),
+			},
 			logger:  ml,
 			rsakeys: NewPublicKeys(),
 		}
 
-		ml.EXPECT().Warn("failed to load public key from:https://jwks.keys").AnyTimes()
+		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").AnyTimes()
+		ml.EXPECT().Warn("failed to get public keys after 0 retries: failed to retrieve keys. Response: , Body: ").AnyTimes()
+		ml.EXPECT().Warn("ScheduleUpdateKeys: failed to retrieve keys. Response: , Body: ").AnyTimes()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 		defer cancel()
@@ -128,13 +136,20 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 				UpdateKeysEveryMinutes:       1,
 				UpdateKeysWithBackoffRetries: 1,
 			},
-			client:  http.DefaultClient,
+			client: &http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						StatusCode: http.StatusServiceUnavailable,
+					},
+					nil),
+			},
 			logger:  ml,
 			rsakeys: NewPublicKeys(),
 		}
 
-		ml.EXPECT().Warn("failed to load public key from:https://jwks.keys").AnyTimes()
-		ml.EXPECT().Warn("ScheduleUpdateKeys: failed to get public keys after 1 retries: failed to load public key from:https://jwks.keys").AnyTimes()
+		ml.EXPECT().Warn(gomock.Any()).AnyTimes()
+		ml.EXPECT().Warn(gomock.Any()).AnyTimes()
+		ml.EXPECT().Warn("ScheduleUpdateKeys: failed to get public keys after 1 retries: failed to retrieve keys. Response: , Body: ").AnyTimes()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 900*time.Millisecond)
 		defer cancel()
