@@ -32,8 +32,9 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 				Roles:                  []string{"Test.Role.1", "Test.Role.2"},
 				UpdateKeysEveryMinutes: 1,
 			},
-			client: http.DefaultClient,
-			logger: logger.NewStdLog("warn"),
+			client:  http.DefaultClient,
+			logger:  logger.NewStdLog("warn"),
+			rsakeys: NewPublicKeys(),
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -77,7 +78,8 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 					},
 					nil),
 			},
-			logger: logger.NewStdLog("warn"),
+			logger:  logger.NewStdLog("warn"),
+			rsakeys: NewPublicKeys(),
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
@@ -85,7 +87,7 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 		ticker := time.NewTicker(100 * time.Millisecond)
 
 		azjwt.ScheduleUpdateKeys(ctx, ticker)
-		assert.NotNil(t, azjwt.rsakeys)
+		assert.True(t, azjwt.rsakeys.Len() > 0, "expected public keys to be loaded")
 	})
 
 	t.Run("expect to get warning log if we error getting public keys", func(t *testing.T) {
@@ -99,8 +101,9 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 				Roles:                  []string{"Test.Role.1", "Test.Role.2"},
 				UpdateKeysEveryMinutes: 1,
 			},
-			client: http.DefaultClient,
-			logger: ml,
+			client:  http.DefaultClient,
+			logger:  ml,
+			rsakeys: NewPublicKeys(),
 		}
 
 		ml.EXPECT().Warn("failed to load public key from:https://jwks.keys").AnyTimes()
@@ -110,7 +113,7 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 		ticker := time.NewTicker(100 * time.Millisecond)
 
 		azjwt.ScheduleUpdateKeys(ctx, ticker)
-		assert.Empty(t, azjwt.rsakeys)
+		assert.True(t, azjwt.rsakeys.Len() == 0, "expected no public keys to be loaded")
 	})
 
 	t.Run("expect to retry if we get a transient error", func(t *testing.T) {
@@ -125,8 +128,9 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 				UpdateKeysEveryMinutes:       1,
 				UpdateKeysWithBackoffRetries: 1,
 			},
-			client: http.DefaultClient,
-			logger: ml,
+			client:  http.DefaultClient,
+			logger:  ml,
+			rsakeys: NewPublicKeys(),
 		}
 
 		ml.EXPECT().Warn("failed to load public key from:https://jwks.keys").AnyTimes()
@@ -137,7 +141,7 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 		ticker := time.NewTicker(500 * time.Millisecond)
 
 		azjwt.ScheduleUpdateKeys(ctx, ticker)
-		assert.Empty(t, azjwt.rsakeys)
+		assert.True(t, azjwt.rsakeys.Len() == 0, "expected no public keys to be loaded")
 	})
 }
 
@@ -161,7 +165,8 @@ func TestAzureJwtValidator_getPublicKeysWithBackoffRetry(t *testing.T) {
 					},
 					nil),
 			},
-			logger: ml,
+			logger:  ml,
+			rsakeys: NewPublicKeys(),
 		}
 
 		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(3)
@@ -214,8 +219,9 @@ func TestAzureJwtValidator_ScheduleUpdateKeysPreservesRsaKeys(t *testing.T) {
 				Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
 				Roles:    []string{"Test.Role.1", "Test.Role.2"},
 			},
-			client: client,
-			logger: logger.NewStdLog("warn"),
+			client:  client,
+			logger:  logger.NewStdLog("warn"),
+			rsakeys: NewPublicKeys(),
 		}
 
 		// Preload keys
@@ -309,8 +315,9 @@ func TestAzureJwtValidator_ScheduleUpdateKeysPreservesRsaKeys(t *testing.T) {
 				Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
 				Roles:    []string{"Test.Role.1", "Test.Role.2"},
 			},
-			client: client,
-			logger: logger.NewStdLog("warn"),
+			client:  client,
+			logger:  logger.NewStdLog("warn"),
+			rsakeys: NewPublicKeys(),
 		}
 
 		// Preload keys

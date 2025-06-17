@@ -1,7 +1,6 @@
 package azurejwtvalidator
 
 import (
-	"crypto/rsa"
 	"net/http"
 
 	"github.com/music-tribe/azadjwtvalidation/internal/logger"
@@ -12,7 +11,7 @@ type AzureJwtValidator struct {
 	client *http.Client
 	logger logger.Logger
 	// Public keys: set if we pass a PublicKey in our config or retrieved via the JWKs url
-	rsakeys map[string]*rsa.PublicKey
+	rsakeys *PublicKeys
 }
 
 func NewAzureJwtValidator(config Config, client *http.Client, logger logger.Logger) *AzureJwtValidator {
@@ -24,6 +23,6 @@ func NewAzureJwtValidator(config Config, client *http.Client, logger logger.Logg
 		config:  config,
 		client:  client,
 		logger:  logger,
-		rsakeys: make(map[string]*rsa.PublicKey),
+		rsakeys: NewPublicKeys(),
 	}
 }

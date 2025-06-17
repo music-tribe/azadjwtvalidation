@@ -58,6 +58,7 @@ func (azjwt *AzureJwtValidator) GetPublicKeys() error {
 			azjwt.logger.Warn(e.Error())
 			return e
 		}
+		rsakeys := make(map[string]*rsa.PublicKey)
 		for _, key := range keys {
 			kid := key.Kid
 			e := key.E
@@ -76,7 +77,10 @@ func (azjwt *AzureJwtValidator) GetPublicKeys() error {
 			}
 
 			rsakey.E = int(new(big.Int).SetBytes(b).Uint64())
-			azjwt.rsakeys[kid] = rsakey
+			rsakeys[kid] = rsakey
+		}
+		if len(rsakeys) != 0 {
+			azjwt.rsakeys.Write(rsakeys)
 		}
 	}
 
@@ -84,10 +88,6 @@ func (azjwt *AzureJwtValidator) GetPublicKeys() error {
 }
 
 func (azjwt *AzureJwtValidator) verifyAndSetPublicKey(publicKey string) error {
-	// FIXME: we are clearing the public keys map, potentially asynchrously & resulting in no public keys when validating tokens
-	// This could explain our random 403s
-	azjwt.rsakeys = make(map[string]*rsa.PublicKey)
-
 	// publicKey is optional
 	if strings.TrimSpace(publicKey) == "" {
 		return nil
@@ -113,7 +113,7 @@ func (azjwt *AzureJwtValidator) verifyAndSetPublicKey(publicKey string) error {
 		if err != nil {
 			return fmt.Errorf("failed to generate JWK kid: %v", err)
 		}
-		azjwt.rsakeys[kid] = pubKey
+		azjwt.rsakeys.Set(kid, pubKey)
 	}
 
 	return nil
