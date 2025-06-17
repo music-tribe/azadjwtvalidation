@@ -11,7 +11,7 @@ func (azjwt *AzureJwtValidator) ScheduleUpdateKeys(ctx context.Context, ticker *
 	defer ticker.Stop()
 
 	withBackoffOperation := func() {
-		err := azjwt.getPublicKeysWithBackoffRetry(ctx, azjwt.config.UpdateKeysWithBackoffRetries)
+		err := azjwt.getPublicKeysWithBackoffRetry(ctx)
 		if err != nil {
 			azjwt.logger.Warn(fmt.Sprintf("ScheduleUpdateKeys: failed to get public keys after %d retries: %v", azjwt.config.UpdateKeysWithBackoffRetries, err))
 		}

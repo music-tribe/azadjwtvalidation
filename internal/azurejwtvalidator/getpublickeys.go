@@ -121,11 +121,11 @@ func (azjwt *AzureJwtValidator) verifyAndSetPublicKey(publicKey string) error {
 	return nil
 }
 
-func (azjwt *AzureJwtValidator) getPublicKeysWithBackoffRetry(ctx context.Context, maxRetries uint) error {
+func (azjwt *AzureJwtValidator) getPublicKeysWithBackoffRetry(ctx context.Context) error {
 	operation := func() (string, error) {
 		return "", azjwt.GetPublicKeys()
 	}
-	_, err := backoff.Retry(ctx, operation, backoff.WithMaxTries(maxRetries), backoff.WithBackOff(backoff.NewExponentialBackOff()))
+	_, err := backoff.Retry(ctx, operation, backoff.WithMaxTries(azjwt.config.UpdateKeysWithBackoffRetries), backoff.WithBackOff(backoff.NewExponentialBackOff()))
 	if err != nil {
 		return err
 	}
