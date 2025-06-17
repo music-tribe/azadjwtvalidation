@@ -5,6 +5,7 @@ go 1.23
 toolchain go1.24.3
 
 require (
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/go-playground/validator/v10 v10.26.0
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/stretchr/testify v1.9.0
