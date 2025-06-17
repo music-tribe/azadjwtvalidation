@@ -423,21 +423,3 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 		assert.Equal(t, pub2, azureJwtValidator.rsakeys[kid2])
 	})
 }
-
-type stubRoundTripper struct {
-	response *http.Response
-	err      error
-}
-
-func newStubRoundTripper(response *http.Response, err error) *stubRoundTripper {
-	return &stubRoundTripper{response, err}
-}
-func (sr *stubRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	return sr.response, sr.err
-}
-
-type errReader int
-
-func (errReader) Read(p []byte) (n int, err error) {
-	return 0, errors.New("test error")
-}
