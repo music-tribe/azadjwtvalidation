@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"time"
-
-	"github.com/cenkalti/backoff/v5"
 )
 
 // Periodically updates the public keys used for JWT validation.
@@ -38,15 +36,4 @@ func (azjwt *AzureJwtValidator) ScheduleUpdateKeys(ctx context.Context, ticker *
 			operation()
 		}
 	}
-}
-
-func (azjwt *AzureJwtValidator) getPublicKeysWithBackoffRetry(ctx context.Context, maxRetries uint) error {
-	operation := func() (string, error) {
-		return "", azjwt.GetPublicKeys()
-	}
-	_, err := backoff.Retry(ctx, operation, backoff.WithMaxTries(maxRetries), backoff.WithBackOff(backoff.NewExponentialBackOff()))
-	if err != nil {
-		return err
-	}
-	return nil
 }

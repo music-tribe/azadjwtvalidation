@@ -145,38 +145,6 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 	})
 }
 
-func TestAzureJwtValidator_getPublicKeysWithBackoffRetry(t *testing.T) {
-	t.Run("expect to fail and retry a few times", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		ml := logger.NewMockLogger(ctrl)
-
-		azjwt := &AzureJwtValidator{
-			config: Config{
-				KeysUrl:                "https://login.microsoftonline.com/common/discovery/v2.0/keys",
-				Audience:               "test-audience",
-				Issuer:                 "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
-				Roles:                  []string{"Test.Role.1", "Test.Role.2"},
-				UpdateKeysEveryMinutes: 1,
-			},
-			client: &http.Client{
-				Transport: newStubRoundTripper(
-					&http.Response{
-						StatusCode: http.StatusServiceUnavailable,
-					},
-					nil),
-			},
-			logger:  ml,
-			rsakeys: NewPublicKeys(),
-		}
-
-		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(3)
-
-		err := azjwt.getPublicKeysWithBackoffRetry(context.TODO(), 3)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to retrieve keys. Response: , Body: ")
-	})
-}
-
 // Test we preserve public keys whilst periodically updating them so that token validation does not fail with 403s due to missing keys.
 func TestAzureJwtValidator_ScheduleUpdateKeysPreservesRsaKeys(t *testing.T) {
 	t.Parallel()
