@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cenkalti/backoff"
+	"github.com/cenkalti/backoff/v5"
 )
 
 // Periodically updates the public keys used for JWT validation.
@@ -13,7 +13,7 @@ func (azjwt *AzureJwtValidator) ScheduleUpdateKeys(ctx context.Context, ticker *
 	defer ticker.Stop()
 
 	withBackoffOperation := func() {
-		err := azjwt.getPublicKeysWithBackoffRetry(azjwt.config.UpdateKeysWithBackoffRetries)
+		err := azjwt.getPublicKeysWithBackoffRetry(ctx, azjwt.config.UpdateKeysWithBackoffRetries)
 		if err != nil {
 			azjwt.logger.Warn(fmt.Sprintf("ScheduleUpdateKeys: failed to get public keys after %d retries: %v", azjwt.config.UpdateKeysWithBackoffRetries, err))
 		}
@@ -40,11 +40,11 @@ func (azjwt *AzureJwtValidator) ScheduleUpdateKeys(ctx context.Context, ticker *
 	}
 }
 
-func (azjwt *AzureJwtValidator) getPublicKeysWithBackoffRetry(maxRetries uint64) error {
-	operation := func() (err error) {
-		return azjwt.GetPublicKeys()
+func (azjwt *AzureJwtValidator) getPublicKeysWithBackoffRetry(ctx context.Context, maxRetries uint) error {
+	operation := func() (string, error) {
+		return "", azjwt.GetPublicKeys()
 	}
-	err := backoff.Retry(operation, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), maxRetries))
+	_, err := backoff.Retry(ctx, operation, backoff.WithMaxTries(maxRetries), backoff.WithBackOff(backoff.NewExponentialBackOff()))
 	if err != nil {
 		return err
 	}

@@ -9,8 +9,8 @@ type Config struct {
 	Audience                     string `validate:"required"`
 	Roles                        []string
 	MatchAllRoles                bool
-	UpdateKeysEveryMinutes       int    `validate:"required,min=5,max=2880"` // 2 days in minutes, Reasonable frequency is 24 hours: https://learn.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview#validate-signature
-	UpdateKeysWithBackoffRetries uint64 // Number of retries for backoff when fetching keys. Default 0 is no retries.
+	UpdateKeysEveryMinutes       int  `validate:"required,min=5,max=2880"` // 2 days in minutes, Reasonable frequency is 24 hours: https://learn.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview#validate-signature
+	UpdateKeysWithBackoffRetries uint // Number of retries for backoff when fetching keys. Default 0 is no retries.
 }
 
 func (c *Config) validate() error {

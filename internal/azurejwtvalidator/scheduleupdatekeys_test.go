@@ -171,7 +171,7 @@ func TestAzureJwtValidator_getPublicKeysWithBackoffRetry(t *testing.T) {
 
 		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(3)
 
-		err := azjwt.getPublicKeysWithBackoffRetry(2)
+		err := azjwt.getPublicKeysWithBackoffRetry(context.TODO(), 3)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to retrieve keys. Response: , Body: ")
 	})
