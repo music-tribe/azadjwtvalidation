@@ -150,7 +150,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 		configWithInvalidPublicKey.PublicKey = "invalid public key"
 
 		azureJwtValidator := NewAzureJwtValidator(configWithInvalidPublicKey, http.DefaultClient, l)
-		err := azureJwtValidator.GetPublicKeys()
+		err := azureJwtValidator.getPublicKeys()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "public key could not be decoded")
 	})
@@ -169,7 +169,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		l.EXPECT().Warn("failed to load public key from:https://jwks.keys")
 
-		err := azureJwtValidator.GetPublicKeys()
+		err := azureJwtValidator.getPublicKeys()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to load public key from:")
 	})
@@ -191,7 +191,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		l.EXPECT().Warn("failed to read response body from:https://jwks.keys")
 
-		err := azureJwtValidator.GetPublicKeys()
+		err := azureJwtValidator.getPublicKeys()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to read response body from:")
 	})
@@ -214,7 +214,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		l.EXPECT().Warn(fmt.Sprintf("failed to retrieve keys. Response: %s, Body: %s", "Forbidden", "test"))
 
-		err := azureJwtValidator.GetPublicKeys()
+		err := azureJwtValidator.getPublicKeys()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to retrieve keys.")
 	})
@@ -236,7 +236,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		l.EXPECT().Warn("failed to unmarshal public keys: invalid character 'e' in literal true (expecting 'r'). Response: , Body: test")
 
-		err := azureJwtValidator.GetPublicKeys()
+		err := azureJwtValidator.getPublicKeys()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to unmarshal public keys")
 	})
@@ -264,7 +264,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		l.EXPECT().Warn("failed to load public key. No keys found from:https://jwks.keys")
 
-		err = azureJwtValidator.GetPublicKeys()
+		err = azureJwtValidator.getPublicKeys()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to load public key")
 	})
@@ -300,7 +300,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		l.EXPECT().Warn("Error parsing key E:illegal base64 data at input byte 7")
 
-		err = azureJwtValidator.GetPublicKeys()
+		err = azureJwtValidator.getPublicKeys()
 		// No error returned because we loop over many keys but we need to ensure we don't store the dodgy key in our map
 		assert.NoError(t, err)
 		assert.True(t, azureJwtValidator.rsakeys.Len() == 0, "expected no public keys to be loaded")
@@ -337,7 +337,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		l.EXPECT().Warn("Error decoding key N:illegal base64 data at input byte 3")
 
-		err = azureJwtValidator.GetPublicKeys()
+		err = azureJwtValidator.getPublicKeys()
 		// No error returned because we loop over many keys but we need to ensure we don't store the dodgy key in our map
 		assert.NoError(t, err)
 		assert.True(t, azureJwtValidator.rsakeys.Len() == 0, "expected no public keys to be loaded")
@@ -372,7 +372,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 			},
 			l)
 
-		err = azureJwtValidator.GetPublicKeys()
+		err = azureJwtValidator.getPublicKeys()
 		assert.NoError(t, err)
 		assert.True(t, azureJwtValidator.rsakeys.Len() > 0, "expected public keys to be loaded")
 		actualPub, ok := azureJwtValidator.rsakeys.Get(kid)
@@ -420,7 +420,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 			},
 			l)
 
-		err = azureJwtValidator.GetPublicKeys()
+		err = azureJwtValidator.getPublicKeys()
 		assert.NoError(t, err)
 		assert.True(t, azureJwtValidator.rsakeys.Len() > 0, "expected public keys to be loaded")
 

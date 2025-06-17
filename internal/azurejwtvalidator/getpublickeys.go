@@ -25,7 +25,7 @@ func (azjwt *AzureJwtValidator) GetPublicKeysWithOptionalBackoffRetry(ctx contex
 		return azjwt.getPublicKeysWithBackoffRetry(ctx)
 	}
 	withoutBackoffOperation := func() error {
-		return azjwt.GetPublicKeys()
+		return azjwt.getPublicKeys()
 	}
 
 	var operation func() error
@@ -42,8 +42,7 @@ func (azjwt *AzureJwtValidator) GetPublicKeysWithOptionalBackoffRetry(ctx contex
 	return err
 }
 
-// FIXME: this doesn't need to be public
-func (azjwt *AzureJwtValidator) GetPublicKeys() error {
+func (azjwt *AzureJwtValidator) getPublicKeys() error {
 	err := azjwt.verifyAndSetPublicKey(azjwt.config.PublicKey)
 	if err != nil {
 		return err
@@ -149,7 +148,7 @@ func (azjwt *AzureJwtValidator) verifyAndSetPublicKey(publicKey string) error {
 
 func (azjwt *AzureJwtValidator) getPublicKeysWithBackoffRetry(ctx context.Context) error {
 	operation := func() (string, error) {
-		return "", azjwt.GetPublicKeys()
+		return "", azjwt.getPublicKeys()
 	}
 	_, err := backoff.Retry(ctx, operation, backoff.WithMaxTries(azjwt.config.UpdateKeysWithBackoffRetries), backoff.WithBackOff(backoff.NewExponentialBackOff()))
 	if err != nil {

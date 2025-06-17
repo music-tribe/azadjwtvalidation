@@ -415,7 +415,7 @@ func TestAzureJwtValidator_ValidateToken(t *testing.T) {
 			Roles:     []string{"Test.Role.1", "Test.Role.2"},
 		}
 		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
-		err := azjwt.GetPublicKeys()
+		err := azjwt.getPublicKeys()
 		require.NoError(t, err)
 
 		// Use a different private key to sign the token
@@ -445,7 +445,7 @@ func TestAzureJwtValidator_ValidateToken(t *testing.T) {
 			Roles:     []string{"Test.Role.1", "Test.Role.2"},
 		}
 		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
-		err := azjwt.GetPublicKeys()
+		err := azjwt.getPublicKeys()
 		require.NoError(t, err)
 
 		// Use a different private key to sign the token
@@ -479,7 +479,7 @@ func TestAzureJwtValidator_ValidateToken(t *testing.T) {
 			Roles:     []string{"Test.Role.1", "Test.Role.2"},
 		}
 		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
-		err := azjwt.GetPublicKeys()
+		err := azjwt.getPublicKeys()
 		require.NoError(t, err)
 
 		token := generateTestJwt(t,
@@ -506,7 +506,7 @@ func TestAzureJwtValidator_ValidateToken(t *testing.T) {
 			Roles:     []string{"Test.Role.1", "Test.Role.2"},
 		}
 		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
-		err := azjwt.GetPublicKeys()
+		err := azjwt.getPublicKeys()
 		require.NoError(t, err)
 
 		token := generateTestJwt(t,
@@ -533,7 +533,7 @@ func TestAzureJwtValidator_ValidateToken(t *testing.T) {
 			Roles:     []string{"Test.Role.1", "Test.Role.2"},
 		}
 		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
-		err := azjwt.GetPublicKeys()
+		err := azjwt.getPublicKeys()
 		require.NoError(t, err)
 
 		token := generateTestJwt(t,
@@ -559,7 +559,7 @@ func TestAzureJwtValidator_ValidateToken(t *testing.T) {
 			Issuer:    "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
 		}
 		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
-		err := azjwt.GetPublicKeys()
+		err := azjwt.getPublicKeys()
 		require.NoError(t, err)
 
 		token := generateTestJwt(t,
@@ -585,7 +585,7 @@ func TestAzureJwtValidator_ValidateToken(t *testing.T) {
 			Roles:     []string{"Test.Role.1"},
 		}
 		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
-		err := azjwt.GetPublicKeys()
+		err := azjwt.getPublicKeys()
 		require.NoError(t, err)
 
 		token := generateTestJwt(t,
@@ -611,7 +611,7 @@ func TestAzureJwtValidator_ValidateToken(t *testing.T) {
 			Roles:     []string{"Test.Role.1", "Test.Role.2"},
 		}
 		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
-		err := azjwt.GetPublicKeys()
+		err := azjwt.getPublicKeys()
 		require.NoError(t, err)
 
 		token := generateTestJwt(t,
@@ -638,7 +638,7 @@ func TestAzureJwtValidator_ValidateToken(t *testing.T) {
 			MatchAllRoles: true,
 		}
 		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
-		err := azjwt.GetPublicKeys()
+		err := azjwt.getPublicKeys()
 		require.NoError(t, err)
 
 		token := generateTestJwt(t,
@@ -666,7 +666,7 @@ func TestAzureJwtValidator_ValidateToken(t *testing.T) {
 			MatchAllRoles: true,
 		}
 		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
-		err := azjwt.GetPublicKeys()
+		err := azjwt.getPublicKeys()
 		require.NoError(t, err)
 
 		token := generateTestJwt(t,
@@ -694,7 +694,7 @@ func TestAzureJwtValidator_ValidateToken(t *testing.T) {
 			MatchAllRoles: true,
 		}
 		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
-		err := azjwt.GetPublicKeys()
+		err := azjwt.getPublicKeys()
 		require.NoError(t, err)
 
 		token := generateTestJwt(t,
@@ -721,7 +721,7 @@ func TestAzureJwtValidator_ValidateToken(t *testing.T) {
 			MatchAllRoles: true,
 		}
 		azjwt := NewAzureJwtValidator(config, http.DefaultClient, l)
-		err := azjwt.GetPublicKeys()
+		err := azjwt.getPublicKeys()
 		require.NoError(t, err)
 
 		token := generateTestJwt(t,

@@ -193,7 +193,7 @@ func TestAzureJwtValidator_ScheduleUpdateKeysPreservesRsaKeys(t *testing.T) {
 		}
 
 		// Preload keys
-		require.NoError(t, azjwt.GetPublicKeys())
+		require.NoError(t, azjwt.getPublicKeys())
 
 		// Setup test plugin and HTTP server
 		plugin := &testPlugin{
@@ -289,7 +289,7 @@ func TestAzureJwtValidator_ScheduleUpdateKeysPreservesRsaKeys(t *testing.T) {
 		}
 
 		// Preload keys
-		require.NoError(t, azjwt.GetPublicKeys())
+		require.NoError(t, azjwt.getPublicKeys())
 
 		// Setup test plugin and HTTP server
 		plugin := &testPlugin{

@@ -18,7 +18,7 @@ func (azjwt *AzureJwtValidator) ScheduleUpdateKeys(ctx context.Context, ticker *
 	}
 	withoutBackoffOperation := func() {
 		// Do we need to do anything with the error here? We are currently logging an error if this fails
-		_ = azjwt.GetPublicKeys()
+		_ = azjwt.getPublicKeys()
 	}
 
 	var operation func()
