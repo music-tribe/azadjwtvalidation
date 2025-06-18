@@ -27,12 +27,15 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 	pub := &privateKey.PublicKey
+	rsakeys := NewPublicKeysWithData(map[string]*rsa.PublicKey{
+		"test-key-id": pub,
+	})
 
 	type fields struct {
 		config  Config
 		client  *http.Client
 		logger  logger.Logger
-		rsakeys map[string]*rsa.PublicKey
+		rsakeys *PublicKeys
 	}
 	type args struct {
 		jwtToken *jwtmodels.AzureJwt
@@ -52,11 +55,9 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
 					Roles:    []string{"Test.Role.1", "Test.Role.2"},
 				},
-				client: http.DefaultClient,
-				logger: l,
-				rsakeys: map[string]*rsa.PublicKey{
-					"test-key-id": pub,
-				},
+				client:  http.DefaultClient,
+				logger:  l,
+				rsakeys: rsakeys,
 			},
 			args: args{
 				jwtToken: generateTestJwt(t,
@@ -78,11 +79,9 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
 					Roles:    []string{"Test.Role.1", "Test.Role.2"},
 				},
-				client: http.DefaultClient,
-				logger: l,
-				rsakeys: map[string]*rsa.PublicKey{
-					"test-key-id": pub,
-				},
+				client:  http.DefaultClient,
+				logger:  l,
+				rsakeys: rsakeys,
 			},
 			args: args{
 				jwtToken: generateTestJwt(t,
@@ -104,11 +103,9 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
 					Roles:    []string{"Test.Role.1", "Test.Role.2"},
 				},
-				client: http.DefaultClient,
-				logger: l,
-				rsakeys: map[string]*rsa.PublicKey{
-					"test-key-id": pub,
-				},
+				client:  http.DefaultClient,
+				logger:  l,
+				rsakeys: rsakeys,
 			},
 			args: args{
 				jwtToken: generateTestJwt(t,
@@ -129,11 +126,9 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					Audience: "test-audience",
 					Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
 				},
-				client: http.DefaultClient,
-				logger: l,
-				rsakeys: map[string]*rsa.PublicKey{
-					"test-key-id": pub,
-				},
+				client:  http.DefaultClient,
+				logger:  l,
+				rsakeys: rsakeys,
 			},
 			args: args{
 				jwtToken: generateTestJwt(t,
@@ -154,11 +149,9 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
 					Roles:    []string{"Test.Role.1"},
 				},
-				client: http.DefaultClient,
-				logger: l,
-				rsakeys: map[string]*rsa.PublicKey{
-					"test-key-id": pub,
-				},
+				client:  http.DefaultClient,
+				logger:  l,
+				rsakeys: rsakeys,
 			},
 			args: args{
 				jwtToken: generateTestJwt(t,
@@ -179,11 +172,9 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
 					Roles:    []string{"Test.Role.1", "Test.Role.2"},
 				},
-				client: http.DefaultClient,
-				logger: l,
-				rsakeys: map[string]*rsa.PublicKey{
-					"test-key-id": pub,
-				},
+				client:  http.DefaultClient,
+				logger:  l,
+				rsakeys: rsakeys,
 			},
 			args: args{
 				jwtToken: generateTestJwt(t,
@@ -205,11 +196,9 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					Roles:         []string{"Test.Role.1", "Test.Role.2"},
 					MatchAllRoles: true,
 				},
-				client: http.DefaultClient,
-				logger: l,
-				rsakeys: map[string]*rsa.PublicKey{
-					"test-key-id": pub,
-				},
+				client:  http.DefaultClient,
+				logger:  l,
+				rsakeys: rsakeys,
 			},
 			args: args{
 				jwtToken: generateTestJwt(t,
@@ -232,11 +221,9 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					Roles:         []string{"Test.Role.1", "Test.Role.2"},
 					MatchAllRoles: true,
 				},
-				client: http.DefaultClient,
-				logger: l,
-				rsakeys: map[string]*rsa.PublicKey{
-					"test-key-id": pub,
-				},
+				client:  http.DefaultClient,
+				logger:  l,
+				rsakeys: rsakeys,
 			},
 			args: args{
 				jwtToken: generateTestJwt(t,
@@ -259,11 +246,9 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					Roles:         []string{},
 					MatchAllRoles: true,
 				},
-				client: http.DefaultClient,
-				logger: l,
-				rsakeys: map[string]*rsa.PublicKey{
-					"test-key-id": pub,
-				},
+				client:  http.DefaultClient,
+				logger:  l,
+				rsakeys: rsakeys,
 			},
 			args: args{
 				jwtToken: generateTestJwt(t,
@@ -285,11 +270,9 @@ func TestAzureJwtValidator_verifyToken(t *testing.T) {
 					Roles:         []string{"Test.Role.1", "Test.Role.2"},
 					MatchAllRoles: true,
 				},
-				client: http.DefaultClient,
-				logger: l,
-				rsakeys: map[string]*rsa.PublicKey{
-					"test-key-id": pub,
-				},
+				client:  http.DefaultClient,
+				logger:  l,
+				rsakeys: rsakeys,
 			},
 			args: args{
 				jwtToken: generateTestJwt(t,
@@ -409,8 +392,9 @@ func TestAzureJwtValidator_ValidateToken(t *testing.T) {
 				Issuer:   "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
 				Roles:    []string{"Test.Role.1", "Test.Role.2"},
 			},
-			client: http.DefaultClient,
-			logger: l,
+			client:  http.DefaultClient,
+			logger:  l,
+			rsakeys: NewPublicKeys(),
 		}
 		err := azjwt.ValidateToken(generateTestJwt(t,
 			time.Now().Add(1*time.Hour),
@@ -480,7 +464,7 @@ func TestAzureJwtValidator_ValidateToken(t *testing.T) {
 		require.NoError(t, err)
 
 		// Set up an invalid public key to simulate a verification failure
-		azjwt.rsakeys[token.Header.Kid] = &privateKey.PublicKey
+		azjwt.rsakeys.Set(token.Header.Kid, &privateKey.PublicKey)
 
 		err = azjwt.ValidateToken(extractedToken)
 		assert.Error(t, err)

@@ -114,7 +114,9 @@ and some more`)
 		err = azureJwtValidator.verifyAndSetPublicKey(string(pubPEM))
 		assert.NoError(t, err)
 		assert.NotNil(t, azureJwtValidator.rsakeys)
-		assert.Equal(t, pub, azureJwtValidator.rsakeys[kid])
+		actualPub, ok := azureJwtValidator.rsakeys.Get(kid)
+		assert.True(t, ok, "expected public key to be set in map")
+		assert.Equal(t, pub, actualPub, "expected public key to match the one set")
 	})
 }
 
@@ -300,7 +302,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 		err = azureJwtValidator.GetPublicKeys()
 		// No error returned because we loop over many keys but we need to ensure we don't store the dodgy key in our map
 		assert.NoError(t, err)
-		assert.Empty(t, azureJwtValidator.rsakeys)
+		assert.True(t, azureJwtValidator.rsakeys.Len() == 0, "expected no public keys to be loaded")
 	})
 
 	t.Run("expect error if we fail to decode N and key shouldn't be stored", func(t *testing.T) {
@@ -337,7 +339,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 		err = azureJwtValidator.GetPublicKeys()
 		// No error returned because we loop over many keys but we need to ensure we don't store the dodgy key in our map
 		assert.NoError(t, err)
-		assert.Empty(t, azureJwtValidator.rsakeys)
+		assert.True(t, azureJwtValidator.rsakeys.Len() == 0, "expected no public keys to be loaded")
 	})
 
 	t.Run("expect success and key stored in map with thumbprint kid", func(t *testing.T) {
@@ -371,8 +373,10 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		err = azureJwtValidator.GetPublicKeys()
 		assert.NoError(t, err)
-		assert.NotEmpty(t, azureJwtValidator.rsakeys)
-		assert.Equal(t, pub, azureJwtValidator.rsakeys[kid])
+		assert.True(t, azureJwtValidator.rsakeys.Len() > 0, "expected public keys to be loaded")
+		actualPub, ok := azureJwtValidator.rsakeys.Get(kid)
+		assert.True(t, ok, "expected public key to be set in map")
+		assert.Equal(t, pub, actualPub, "expected public key to match the one set")
 	})
 
 	t.Run("expect success and multiple keys stored in map with thumbprint kid", func(t *testing.T) {
@@ -417,27 +421,16 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		err = azureJwtValidator.GetPublicKeys()
 		assert.NoError(t, err)
-		assert.NotEmpty(t, azureJwtValidator.rsakeys)
-		assert.True(t, len(azureJwtValidator.rsakeys) == 2)
-		assert.Equal(t, pub, azureJwtValidator.rsakeys[kid])
-		assert.Equal(t, pub2, azureJwtValidator.rsakeys[kid2])
+		assert.True(t, azureJwtValidator.rsakeys.Len() > 0, "expected public keys to be loaded")
+
+		actualPub, ok := azureJwtValidator.rsakeys.Get(kid)
+		assert.True(t, ok, "expected public key to be set in map")
+		assert.Equal(t, pub, actualPub, "expected public key to match the one set")
+
+		actualPub2, ok := azureJwtValidator.rsakeys.Get(kid2)
+		assert.True(t, ok, "expected public key to be set in map")
+		assert.Equal(t, pub2, actualPub2, "expected public key to match the one set")
+
+		assert.True(t, azureJwtValidator.rsakeys.Len() == 2)
 	})
-}
-
-type stubRoundTripper struct {
-	response *http.Response
-	err      error
-}
-
-func newStubRoundTripper(response *http.Response, err error) *stubRoundTripper {
-	return &stubRoundTripper{response, err}
-}
-func (sr *stubRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	return sr.response, sr.err
-}
-
-type errReader int
-
-func (errReader) Read(p []byte) (n int, err error) {
-	return 0, errors.New("test error")
 }

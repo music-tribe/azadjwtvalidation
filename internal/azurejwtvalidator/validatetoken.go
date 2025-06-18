@@ -15,11 +15,12 @@ import (
 func (azjwt *AzureJwtValidator) ValidateToken(token *jwtmodels.AzureJwt) error {
 	hash := sha256.Sum256(token.RawToken)
 
-	if _, ok := azjwt.rsakeys[token.Header.Kid]; !ok {
+	pub, ok := azjwt.rsakeys.Get(token.Header.Kid)
+	if !ok || pub == nil {
 		return errors.New("invalid public key")
 	}
 
-	err := rsa.VerifyPKCS1v15(azjwt.rsakeys[token.Header.Kid], crypto.SHA256, hash[:], token.Signature)
+	err := rsa.VerifyPKCS1v15(pub, crypto.SHA256, hash[:], token.Signature)
 	if err != nil {
 		return err
 	}
