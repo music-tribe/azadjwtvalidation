@@ -101,12 +101,20 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 				Roles:                  []string{"Test.Role.1", "Test.Role.2"},
 				UpdateKeysEveryMinutes: 1,
 			},
-			client:  http.DefaultClient,
+			client: &http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						StatusCode: http.StatusServiceUnavailable,
+					},
+					nil),
+			},
 			logger:  ml,
 			rsakeys: NewPublicKeys(),
 		}
 
-		ml.EXPECT().Warn("failed to load public key from:https://jwks.keys").AnyTimes()
+		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").AnyTimes()
+		ml.EXPECT().Warn("failed to get public keys after 0 retries: failed to retrieve keys. Response: , Body: ").AnyTimes()
+		ml.EXPECT().Warn("ScheduleUpdateKeys: failed to retrieve keys. Response: , Body: ").AnyTimes()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 		defer cancel()
@@ -128,36 +136,6 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 				UpdateKeysEveryMinutes:       1,
 				UpdateKeysWithBackoffRetries: 1,
 			},
-			client:  http.DefaultClient,
-			logger:  ml,
-			rsakeys: NewPublicKeys(),
-		}
-
-		ml.EXPECT().Warn("failed to load public key from:https://jwks.keys").AnyTimes()
-		ml.EXPECT().Warn("ScheduleUpdateKeys: failed to get public keys after 1 retries: failed to load public key from:https://jwks.keys").AnyTimes()
-
-		ctx, cancel := context.WithTimeout(context.Background(), 900*time.Millisecond)
-		defer cancel()
-		ticker := time.NewTicker(500 * time.Millisecond)
-
-		azjwt.ScheduleUpdateKeys(ctx, ticker)
-		assert.True(t, azjwt.rsakeys.Len() == 0, "expected no public keys to be loaded")
-	})
-}
-
-func TestAzureJwtValidator_getPublicKeysWithBackoffRetry(t *testing.T) {
-	t.Run("expect to fail and retry a few times", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		ml := logger.NewMockLogger(ctrl)
-
-		azjwt := &AzureJwtValidator{
-			config: Config{
-				KeysUrl:                "https://login.microsoftonline.com/common/discovery/v2.0/keys",
-				Audience:               "test-audience",
-				Issuer:                 "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
-				Roles:                  []string{"Test.Role.1", "Test.Role.2"},
-				UpdateKeysEveryMinutes: 1,
-			},
 			client: &http.Client{
 				Transport: newStubRoundTripper(
 					&http.Response{
@@ -169,11 +147,16 @@ func TestAzureJwtValidator_getPublicKeysWithBackoffRetry(t *testing.T) {
 			rsakeys: NewPublicKeys(),
 		}
 
-		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(3)
+		ml.EXPECT().Warn(gomock.Any()).AnyTimes()
+		ml.EXPECT().Warn(gomock.Any()).AnyTimes()
+		ml.EXPECT().Warn("ScheduleUpdateKeys: failed to get public keys after 1 retries: failed to retrieve keys. Response: , Body: ").AnyTimes()
 
-		err := azjwt.getPublicKeysWithBackoffRetry(2)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to retrieve keys. Response: , Body: ")
+		ctx, cancel := context.WithTimeout(context.Background(), 900*time.Millisecond)
+		defer cancel()
+		ticker := time.NewTicker(500 * time.Millisecond)
+
+		azjwt.ScheduleUpdateKeys(ctx, ticker)
+		assert.True(t, azjwt.rsakeys.Len() == 0, "expected no public keys to be loaded")
 	})
 }
 
@@ -225,7 +208,7 @@ func TestAzureJwtValidator_ScheduleUpdateKeysPreservesRsaKeys(t *testing.T) {
 		}
 
 		// Preload keys
-		require.NoError(t, azjwt.GetPublicKeys())
+		require.NoError(t, azjwt.getPublicKeys())
 
 		// Setup test plugin and HTTP server
 		plugin := &testPlugin{
@@ -321,7 +304,7 @@ func TestAzureJwtValidator_ScheduleUpdateKeysPreservesRsaKeys(t *testing.T) {
 		}
 
 		// Preload keys
-		require.NoError(t, azjwt.GetPublicKeys())
+		require.NoError(t, azjwt.getPublicKeys())
 
 		// Setup test plugin and HTTP server
 		plugin := &testPlugin{

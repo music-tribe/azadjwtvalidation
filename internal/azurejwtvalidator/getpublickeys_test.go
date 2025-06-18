@@ -2,6 +2,7 @@ package azurejwtvalidator
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -149,7 +150,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 		configWithInvalidPublicKey.PublicKey = "invalid public key"
 
 		azureJwtValidator := NewAzureJwtValidator(configWithInvalidPublicKey, http.DefaultClient, l)
-		err := azureJwtValidator.GetPublicKeys()
+		err := azureJwtValidator.getPublicKeys()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "public key could not be decoded")
 	})
@@ -168,7 +169,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		l.EXPECT().Warn("failed to load public key from:https://jwks.keys")
 
-		err := azureJwtValidator.GetPublicKeys()
+		err := azureJwtValidator.getPublicKeys()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to load public key from:")
 	})
@@ -190,7 +191,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		l.EXPECT().Warn("failed to read response body from:https://jwks.keys")
 
-		err := azureJwtValidator.GetPublicKeys()
+		err := azureJwtValidator.getPublicKeys()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to read response body from:")
 	})
@@ -213,7 +214,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		l.EXPECT().Warn(fmt.Sprintf("failed to retrieve keys. Response: %s, Body: %s", "Forbidden", "test"))
 
-		err := azureJwtValidator.GetPublicKeys()
+		err := azureJwtValidator.getPublicKeys()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to retrieve keys.")
 	})
@@ -235,7 +236,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		l.EXPECT().Warn("failed to unmarshal public keys: invalid character 'e' in literal true (expecting 'r'). Response: , Body: test")
 
-		err := azureJwtValidator.GetPublicKeys()
+		err := azureJwtValidator.getPublicKeys()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to unmarshal public keys")
 	})
@@ -263,7 +264,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		l.EXPECT().Warn("failed to load public key. No keys found from:https://jwks.keys")
 
-		err = azureJwtValidator.GetPublicKeys()
+		err = azureJwtValidator.getPublicKeys()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to load public key")
 	})
@@ -299,7 +300,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		l.EXPECT().Warn("Error parsing key E:illegal base64 data at input byte 7")
 
-		err = azureJwtValidator.GetPublicKeys()
+		err = azureJwtValidator.getPublicKeys()
 		// No error returned because we loop over many keys but we need to ensure we don't store the dodgy key in our map
 		assert.NoError(t, err)
 		assert.True(t, azureJwtValidator.rsakeys.Len() == 0, "expected no public keys to be loaded")
@@ -336,7 +337,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 
 		l.EXPECT().Warn("Error decoding key N:illegal base64 data at input byte 3")
 
-		err = azureJwtValidator.GetPublicKeys()
+		err = azureJwtValidator.getPublicKeys()
 		// No error returned because we loop over many keys but we need to ensure we don't store the dodgy key in our map
 		assert.NoError(t, err)
 		assert.True(t, azureJwtValidator.rsakeys.Len() == 0, "expected no public keys to be loaded")
@@ -371,7 +372,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 			},
 			l)
 
-		err = azureJwtValidator.GetPublicKeys()
+		err = azureJwtValidator.getPublicKeys()
 		assert.NoError(t, err)
 		assert.True(t, azureJwtValidator.rsakeys.Len() > 0, "expected public keys to be loaded")
 		actualPub, ok := azureJwtValidator.rsakeys.Get(kid)
@@ -419,7 +420,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 			},
 			l)
 
-		err = azureJwtValidator.GetPublicKeys()
+		err = azureJwtValidator.getPublicKeys()
 		assert.NoError(t, err)
 		assert.True(t, azureJwtValidator.rsakeys.Len() > 0, "expected public keys to be loaded")
 
@@ -432,5 +433,99 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 		assert.Equal(t, pub2, actualPub2, "expected public key to match the one set")
 
 		assert.True(t, azureJwtValidator.rsakeys.Len() == 2)
+	})
+}
+
+func TestAzureJwtValidator_getPublicKeysWithBackoffRetry(t *testing.T) {
+	t.Run("expect to fail and retry a few times", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ml := logger.NewMockLogger(ctrl)
+
+		azjwt := &AzureJwtValidator{
+			config: Config{
+				KeysUrl:                      "https://login.microsoftonline.com/common/discovery/v2.0/keys",
+				Audience:                     "test-audience",
+				Issuer:                       "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+				Roles:                        []string{"Test.Role.1", "Test.Role.2"},
+				UpdateKeysEveryMinutes:       1,
+				UpdateKeysWithBackoffRetries: 3,
+			},
+			client: &http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						StatusCode: http.StatusServiceUnavailable,
+					},
+					nil),
+			},
+			logger:  ml,
+			rsakeys: NewPublicKeys(),
+		}
+
+		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(3)
+
+		err := azjwt.getPublicKeysWithBackoffRetry(context.TODO())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to retrieve keys. Response: , Body: ")
+	})
+}
+
+func TestAzureJwtValidator_GetPublicKeysWithOptionalBackoffRetry(t *testing.T) {
+	t.Run("expect to retry if we get a transient error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ml := logger.NewMockLogger(ctrl)
+		azjwt := &AzureJwtValidator{
+			config: Config{
+				KeysUrl:                      "https://jwks.keys",
+				Audience:                     "test-audience",
+				Issuer:                       "https://issuer.test",
+				Roles:                        []string{"Test.Role.1", "Test.Role.2"},
+				UpdateKeysEveryMinutes:       1,
+				UpdateKeysWithBackoffRetries: 3,
+			},
+			client: &http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						StatusCode: http.StatusServiceUnavailable,
+					},
+					nil),
+			},
+			logger:  ml,
+			rsakeys: NewPublicKeys(),
+		}
+
+		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(3)
+		ml.EXPECT().Warn("failed to get public keys after 3 retries: failed to retrieve keys. Response: , Body: ").Times(1)
+
+		azjwt.GetPublicKeysWithOptionalBackoffRetry(context.TODO())
+		assert.True(t, azjwt.rsakeys.Len() == 0, "expected no public keys to be loaded")
+	})
+
+	t.Run("expect to not retry if we don't set backoff retries", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ml := logger.NewMockLogger(ctrl)
+		azjwt := &AzureJwtValidator{
+			config: Config{
+				KeysUrl:                "https://jwks.keys",
+				Audience:               "test-audience",
+				Issuer:                 "https://issuer.test",
+				Roles:                  []string{"Test.Role.1", "Test.Role.2"},
+				UpdateKeysEveryMinutes: 1,
+			},
+			client: &http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						StatusCode: http.StatusServiceUnavailable,
+					},
+					nil),
+			},
+			logger:  ml,
+			rsakeys: NewPublicKeys(),
+		}
+
+		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(1)
+		ml.EXPECT().Warn("failed to get public keys after 0 retries: failed to retrieve keys. Response: , Body: ").Times(1)
+
+		azjwt.GetPublicKeysWithOptionalBackoffRetry(context.TODO())
+		assert.True(t, azjwt.rsakeys.Len() == 0, "expected no public keys to be loaded")
 	})
 }
