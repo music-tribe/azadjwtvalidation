@@ -23,11 +23,6 @@ mocks:
 clean_mocks:
 	find . -name "mock_*" -type f  -exec rm -r {} +
 
-# We need to add generated mocks to source control so downstream packages can import and use them
-ci_check_mocks_up_to_date: mocks
-	git diff --exit-code && echo $?
-.PHONY: ci_check_mocks_up_to_date
-
 run_tests: tools mocks
 	go test ./... -v
 

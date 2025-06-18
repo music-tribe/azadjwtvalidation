@@ -9,3 +9,6 @@
 **/results_junitxml_gosec.xml
 
 /.tools
+
+# Ignore mocks - these are generated files
+**/mock_*.go
