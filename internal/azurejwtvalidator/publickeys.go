@@ -2,7 +2,6 @@ package azurejwtvalidator
 
 import (
 	"crypto/rsa"
-	"maps"
 	"sync"
 )
 
@@ -24,7 +23,10 @@ func NewPublicKeys() *PublicKeys {
 
 func NewPublicKeysWithData(data map[string]*rsa.PublicKey) *PublicKeys {
 	copied := make(map[string]*rsa.PublicKey, len(data))
-	maps.Copy(copied, data)
+	// We can't use maps.Copy here as it requires Go 1.21+ and generics which isn't supported in Traefik plugins yet (due to Yaegi).
+	for k, v := range data {
+		copied[k] = v
+	}
 	return &PublicKeys{
 		data: copied,
 	}
@@ -53,7 +55,10 @@ func (cs *PublicKeys) Write(newMap map[string]*rsa.PublicKey) {
 		return
 	}
 	cloned := make(map[string]*rsa.PublicKey, len(newMap))
-	maps.Copy(cloned, newMap)
+	// We can't use maps.Copy here as it requires Go 1.21+ and generics which isn't supported in Traefik plugins yet (due to Yaegi).
+	for k, v := range newMap {
+		cloned[k] = v
+	}
 	cs.data = cloned
 }
 
