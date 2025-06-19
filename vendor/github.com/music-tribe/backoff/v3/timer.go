@@ -2,7 +2,7 @@ package backoff
 
 import "time"
 
-type timer interface {
+type Timer interface {
 	Start(duration time.Duration)
 	Stop()
 	C() <-chan time.Time

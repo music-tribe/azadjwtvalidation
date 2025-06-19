@@ -23,7 +23,7 @@ type Config struct {
 	Roles                        []string
 	MatchAllRoles                bool
 	UpdateKeysEveryMinutes       int
-	UpdateKeysWithBackoffRetries uint
+	UpdateKeysWithBackoffRetries uint64
 	LogLevel                     string
 	LogHeaders                   []string
 }

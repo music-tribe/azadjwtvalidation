@@ -13,8 +13,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cenkalti/backoff/v5"
 	"github.com/music-tribe/azadjwtvalidation/internal/jwtmodels"
+	"github.com/music-tribe/backoff/v3"
 )
 
 // Get public keys. Will retry if Config.UpdateKeysWithBackoffRetries is set.
@@ -147,10 +147,10 @@ func (azjwt *AzureJwtValidator) verifyAndSetPublicKey(publicKey string) error {
 }
 
 func (azjwt *AzureJwtValidator) getPublicKeysWithBackoffRetry(ctx context.Context) error {
-	operation := func() (string, error) {
-		return "", azjwt.getPublicKeys()
+	operation := func() error {
+		return azjwt.getPublicKeys()
 	}
-	_, err := backoff.Retry(ctx, operation, backoff.WithMaxTries(azjwt.config.UpdateKeysWithBackoffRetries), backoff.WithBackOff(backoff.NewExponentialBackOff()))
+	err := backoff.Retry(operation, backoff.WithContext(backoff.WithMaxRetries(backoff.NewExponentialBackOff(), azjwt.config.UpdateKeysWithBackoffRetries), ctx))
 	if err != nil {
 		return err
 	}

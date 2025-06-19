@@ -15,6 +15,7 @@ import (
 	"math/big"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/music-tribe/azadjwtvalidation/internal/jwtmodels"
 	"github.com/music-tribe/azadjwtvalidation/internal/logger"
@@ -461,9 +462,43 @@ func TestAzureJwtValidator_getPublicKeysWithBackoffRetry(t *testing.T) {
 			rsakeys: NewPublicKeys(),
 		}
 
-		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(3)
+		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(4)
 
 		err := azjwt.getPublicKeysWithBackoffRetry(context.TODO())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to retrieve keys. Response: , Body: ")
+	})
+
+	t.Run("expect to stop retrying when context is done", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ml := logger.NewMockLogger(ctrl)
+
+		azjwt := &AzureJwtValidator{
+			config: Config{
+				KeysUrl:                      "https://login.microsoftonline.com/common/discovery/v2.0/keys",
+				Audience:                     "test-audience",
+				Issuer:                       "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+				Roles:                        []string{"Test.Role.1", "Test.Role.2"},
+				UpdateKeysEveryMinutes:       1,
+				UpdateKeysWithBackoffRetries: 100,
+			},
+			client: &http.Client{
+				Transport: newStubRoundTripper(
+					&http.Response{
+						StatusCode: http.StatusServiceUnavailable,
+					},
+					nil),
+			},
+			logger:  ml,
+			rsakeys: NewPublicKeys(),
+		}
+
+		// Expect to not even get to retry because the context will be done immediately
+		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(1)
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
+		defer cancel()
+		err := azjwt.getPublicKeysWithBackoffRetry(ctx)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to retrieve keys. Response: , Body: ")
 	})
@@ -493,7 +528,7 @@ func TestAzureJwtValidator_GetPublicKeysWithOptionalBackoffRetry(t *testing.T) {
 			rsakeys: NewPublicKeys(),
 		}
 
-		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(3)
+		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(4)
 		ml.EXPECT().Warn("failed to get public keys after 3 retries: failed to retrieve keys. Response: , Body: ").Times(1)
 
 		azjwt.GetPublicKeysWithOptionalBackoffRetry(context.TODO())

@@ -53,6 +53,11 @@ traefik --configfile config.yaml
 
 > Update `dynamic-dev-config.yml` as appropriate
 
+Ensure you don't have any mocks locally as you will get a panic when running. You can remove local mocks using:
+```bash
+make clean_mocks
+```
+
 ## Relevant links
 
 - [jwt.ms](https://jwt.ms/) - validate your Azure AD and Azure AD B2C token online
