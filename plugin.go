@@ -1,7 +1,5 @@
 package azadjwtvalidation
 
-// FIXME: this could be renamed to plugin.go
-
 import (
 	"context"
 	"encoding/json"
