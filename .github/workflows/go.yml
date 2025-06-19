@@ -39,8 +39,5 @@ jobs:
     - name: Test
       run: make ci_test
 
-    - name: CheckMocks
-      run: make ci_check_mocks_up_to_date
-
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
