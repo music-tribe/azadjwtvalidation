@@ -82,7 +82,7 @@ func TestClaims_IsValidForRole(t *testing.T) {
 				Sub:   tt.fields.Sub,
 				Roles: tt.fields.Roles,
 			}
-			if got := claims.IsValidForRole(tt.args.allowedRole, tt.args.l); got != tt.want {
+			if got := claims.isValidForRole(tt.args.allowedRole, tt.args.l); got != tt.want {
 				t.Errorf("Claims.IsValidForRole() = %v, want %v", got, tt.want)
 			}
 		})
@@ -203,7 +203,7 @@ func TestClaims_ValidateRoles(t *testing.T) {
 				Sub:   tt.fields.Sub,
 				Roles: tt.fields.Roles,
 			}
-			if err := claims.ValidateRoles(tt.args.allowedRoles, tt.args.matchAllRoles, tt.args.l); (err != nil) != tt.wantErr {
+			if err := claims.validateRoles(tt.args.allowedRoles, tt.args.matchAllRoles, tt.args.l); (err != nil) != tt.wantErr {
 				t.Errorf("Claims.ValidateRoles() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
