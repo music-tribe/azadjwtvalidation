@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/music-tribe/azadjwtvalidation/internal/logger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +20,7 @@ type JwtClaim struct {
 func TestHttpErrorLoggingWithLogHeaderDisabled(t *testing.T) {
 	// Set up a buffer to capture the log output
 	var buf bytes.Buffer
-	testLogger := log.New(&buf, "", log.LstdFlags)
+	testLogger := logger.NewLogWithBuffer("DEBUG", &buf)
 
 	// Set up a request with headers
 	request := httptest.NewRequest("GET", "/testtoken", nil)
@@ -41,7 +42,7 @@ func TestHttpErrorLoggingWithLogHeaderDisabled(t *testing.T) {
 func TestHttpErrorLoggingWithLogHeaderEnabled(t *testing.T) {
 	// Set up a buffer to capture the log output
 	var buf bytes.Buffer
-	testLogger := log.New(&buf, "", log.LstdFlags)
+	testLogger := logger.NewLogWithBuffer("DEBUG", &buf)
 
 	// Set up a request with headers
 	request := httptest.NewRequest("GET", "/testtoken", nil)

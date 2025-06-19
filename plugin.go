@@ -3,8 +3,7 @@ package azadjwtvalidation
 import (
 	"context"
 	"encoding/json"
-	"io"
-	"log"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -33,9 +32,7 @@ type AzureJwtPlugin struct {
 }
 
 var (
-	LoggerINFO  = log.New(io.Discard, "INFO: azure-jwt-token-validator: ", log.Ldate|log.Ltime|log.Lshortfile)
-	LoggerDEBUG = log.New(io.Discard, "DEBUG: azure-jwt-token-validator: ", log.Ldate|log.Ltime|log.Lshortfile)
-	LoggerWARN  = log.New(io.Discard, "WARN: azure-jwt-token-validator: ", log.Ldate|log.Ltime|log.Lshortfile)
+	l logger.Logger
 )
 
 func CreateConfig() *Config {
@@ -44,7 +41,7 @@ func CreateConfig() *Config {
 
 // New created a new HeaderMatch plugin.
 func New(ctx context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
-	l := logger.NewStdLog(config.LogLevel)
+	l = logger.NewStdLog(config.LogLevel)
 
 	validator := azurejwtvalidator.NewAzureJwtValidator(
 		azurejwtvalidator.Config{
@@ -92,10 +89,10 @@ func (azureJwt *AzureJwtPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Requ
 	if err == nil {
 		valerr := azureJwt.validator.ValidateToken(token)
 		if valerr == nil {
-			LoggerDEBUG.Println("Accepted request")
+			l.Debug("Accepted request")
 			tokenValid = true
 		} else {
-			LoggerWARN.Println(valerr)
+			l.Warn(fmt.Sprintf("Token validation failed: %v\n", valerr))
 		}
 	} else {
 		errMsg := ""
@@ -111,19 +108,19 @@ func (azureJwt *AzureJwtPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Requ
 			errMsg = "The token provided is invalid. Please provide a valid bearer token."
 		}
 
-		LogHttp(LoggerWARN, errMsg, azureJwt.config.LogHeaders, http.StatusUnauthorized, req)
+		LogHttp(l, errMsg, azureJwt.config.LogHeaders, http.StatusUnauthorized, req)
 		http.Error(rw, errMsg, http.StatusUnauthorized)
 	}
 
 	if tokenValid {
 		azureJwt.next.ServeHTTP(rw, req)
 	} else {
-		LogHttp(LoggerWARN, "The token you provided is not valid. Please provide a valid token.", azureJwt.config.LogHeaders, http.StatusForbidden, req)
+		LogHttp(l, "The token you provided is not valid. Please provide a valid token.", azureJwt.config.LogHeaders, http.StatusForbidden, req)
 		http.Error(rw, "The token you provided is not valid. Please provide a valid token.", http.StatusForbidden)
 	}
 }
 
-func LogHttp(logger *log.Logger, message string, headers []string, statusCode int, request *http.Request) {
+func LogHttp(l logger.Logger, message string, headers []string, statusCode int, request *http.Request) {
 	var logPayload = make(map[string]string)
 
 	for _, header := range headers {
@@ -138,9 +135,9 @@ func LogHttp(logger *log.Logger, message string, headers []string, statusCode in
 	jsonStr, err := json.Marshal(logPayload)
 
 	if err != nil {
-		logger.Printf("Error marshaling log payload to JSON: %v\n", err)
+		l.Warn(fmt.Sprintf("Error marshaling log payload to JSON: %v\n", err))
 		return
 	}
 
-	logger.Println(string(jsonStr))
+	l.Debug(string(jsonStr))
 }
