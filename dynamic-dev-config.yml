@@ -27,6 +27,8 @@ http:
             - Test.Role.1
             - Test.Role.2
           matchallroles: true
+          updatekeyseveryminutes: 5
+          updatekeyswithbackoffretries: 2
           loglevel: "DEBUG"
           logheaders:
             - X-Request-Id
