@@ -150,7 +150,7 @@ func (azjwt *AzureJwtValidator) getPublicKeysWithBackoffRetry(ctx context.Contex
 	operation := func() error {
 		return azjwt.getPublicKeys()
 	}
-	err := backoff.Retry(operation, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), azjwt.config.UpdateKeysWithBackoffRetries))
+	err := backoff.Retry(operation, backoff.WithContext(backoff.WithMaxRetries(backoff.NewExponentialBackOff(), azjwt.config.UpdateKeysWithBackoffRetries), ctx))
 	if err != nil {
 		return err
 	}
