@@ -5,8 +5,8 @@ go 1.23
 toolchain go1.24.3
 
 require (
-	github.com/cenkalti/backoff/v5 v5.0.2
 	github.com/golang-jwt/jwt/v4 v4.4.2
+	github.com/music-tribe/backoff/v3 v3.2.3
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/mock v0.5.2
 )

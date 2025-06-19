@@ -1,12 +1,12 @@
-# github.com/cenkalti/backoff/v5 v5.0.2
-## explicit; go 1.23
-github.com/cenkalti/backoff/v5
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
 # github.com/golang-jwt/jwt/v4 v4.4.2
 ## explicit; go 1.16
 github.com/golang-jwt/jwt/v4
+# github.com/music-tribe/backoff/v3 v3.2.3
+## explicit; go 1.12
+github.com/music-tribe/backoff/v3
 # github.com/pmezard/go-difflib v1.0.0
 ## explicit
 github.com/pmezard/go-difflib/difflib

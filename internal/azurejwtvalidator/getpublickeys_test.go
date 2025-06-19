@@ -461,7 +461,7 @@ func TestAzureJwtValidator_getPublicKeysWithBackoffRetry(t *testing.T) {
 			rsakeys: NewPublicKeys(),
 		}
 
-		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(3)
+		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(4)
 
 		err := azjwt.getPublicKeysWithBackoffRetry(context.TODO())
 		assert.Error(t, err)
@@ -493,7 +493,7 @@ func TestAzureJwtValidator_GetPublicKeysWithOptionalBackoffRetry(t *testing.T) {
 			rsakeys: NewPublicKeys(),
 		}
 
-		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(3)
+		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(4)
 		ml.EXPECT().Warn("failed to get public keys after 3 retries: failed to retrieve keys. Response: , Body: ").Times(1)
 
 		azjwt.GetPublicKeysWithOptionalBackoffRetry(context.TODO())
