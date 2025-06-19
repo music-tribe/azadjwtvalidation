@@ -32,7 +32,7 @@ run_tests_short: tools mocks
 ci_test: tools mocks
 	go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
 
-ci_staticcheck: tools
+ci_staticcheck: tools mocks
 	staticcheck -checks "all, -ST1000, -ST1001, -ST1003, -ST1016, -ST1020, -ST1021, -ST1022" ./...
 
 race: tools mocks
