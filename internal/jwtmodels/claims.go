@@ -18,7 +18,7 @@ type Claims struct {
 	Roles []string    `json:"roles"`
 }
 
-func (claims *Claims) IsValidForRole(allowedRole string, l logger.Logger) bool {
+func (claims *Claims) isValidForRole(allowedRole string, l logger.Logger) bool {
 	for _, parsedRole := range claims.Roles {
 		if parsedRole == allowedRole {
 			l.Debug(fmt.Sprintf("Match: parsedRole: %s, allowedRole: %s", parsedRole, allowedRole))
@@ -31,7 +31,7 @@ func (claims *Claims) IsValidForRole(allowedRole string, l logger.Logger) bool {
 	return false
 }
 
-func (claims *Claims) ValidateRoles(allowedRoles []string, matchAllRoles bool, l logger.Logger) error {
+func (claims *Claims) validateRoles(allowedRoles []string, matchAllRoles bool, l logger.Logger) error {
 	if claims.Roles != nil {
 		if len(allowedRoles) > 0 {
 			var allRolesValid = true
@@ -40,7 +40,7 @@ func (claims *Claims) ValidateRoles(allowedRoles []string, matchAllRoles bool, l
 			}
 
 			for _, role := range allowedRoles {
-				roleValid := claims.IsValidForRole(role, l)
+				roleValid := claims.isValidForRole(role, l)
 				if matchAllRoles && !roleValid {
 					allRolesValid = false
 					break
@@ -73,7 +73,7 @@ func (claims *Claims) Validate(audience, issuer string, allowedRoles []string, m
 		return errors.New("wrong issuer")
 	}
 
-	err := claims.ValidateRoles(allowedRoles, matchAllRoles, l)
+	err := claims.validateRoles(allowedRoles, matchAllRoles, l)
 	if err != nil {
 		return err
 	}
