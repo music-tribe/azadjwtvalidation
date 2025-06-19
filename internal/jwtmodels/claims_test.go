@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/music-tribe/azadjwtvalidation/internal/logger"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestClaims_IsValidForRole(t *testing.T) {
@@ -218,6 +219,7 @@ func TestClaims_Validate(t *testing.T) {
 		Iss   string
 		Aud   string
 		Sub   string
+		Scp   string
 		Roles []string
 	}
 	type args struct {
@@ -282,11 +284,43 @@ func TestClaims_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "expect valid for scp if no config roles",
+			fields: fields{
+				Aud: "test-audience",
+				Iss: "test-issuer",
+				Scp: "Test.Role.1 Test.Role.2",
+			},
+			args: args{
+				audience:      "test-audience",
+				issuer:        "test-issuer",
+				allowedRoles:  []string{},
+				matchAllRoles: false,
+				l:             l,
+			},
+			wantErr: false,
+		},
+		{
 			name: "expect valid if we match one config role",
 			fields: fields{
 				Aud:   "test-audience",
 				Iss:   "test-issuer",
 				Roles: []string{"Test.Role.1"},
+			},
+			args: args{
+				audience:      "test-audience",
+				issuer:        "test-issuer",
+				allowedRoles:  []string{"Test.Role.1"},
+				matchAllRoles: false,
+				l:             l,
+			},
+			wantErr: false,
+		},
+		{
+			name: "expect valid if we match scp with one config role",
+			fields: fields{
+				Aud: "test-audience",
+				Iss: "test-issuer",
+				Scp: "Test.Role.1",
 			},
 			args: args{
 				audience:      "test-audience",
@@ -314,11 +348,43 @@ func TestClaims_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "expect valid if we match scp with one config role, matchAllRoles is false",
+			fields: fields{
+				Aud: "test-audience",
+				Iss: "test-issuer",
+				Scp: "Test.Role.1",
+			},
+			args: args{
+				audience:      "test-audience",
+				issuer:        "test-issuer",
+				allowedRoles:  []string{"Test.Role.1", "Test.Role.2"},
+				matchAllRoles: false,
+				l:             l,
+			},
+			wantErr: false,
+		},
+		{
 			name: "expect invalid if we match only one config role but matchAllRoles is true",
 			fields: fields{
 				Aud:   "test-audience",
 				Iss:   "test-issuer",
 				Roles: []string{"Test.Role.1"},
+			},
+			args: args{
+				audience:      "test-audience",
+				issuer:        "test-issuer",
+				allowedRoles:  []string{"Test.Role.1", "Test.Role.2"},
+				matchAllRoles: true,
+				l:             l,
+			},
+			wantErr: true,
+		},
+		{
+			name: "expect invalid if we match scp with only one config role but matchAllRoles is true",
+			fields: fields{
+				Aud: "test-audience",
+				Iss: "test-issuer",
+				Scp: "Test.Role.1",
 			},
 			args: args{
 				audience:      "test-audience",
@@ -385,11 +451,59 @@ func TestClaims_Validate(t *testing.T) {
 				Iss:   tt.fields.Iss,
 				Aud:   tt.fields.Aud,
 				Sub:   tt.fields.Sub,
+				Scp:   tt.fields.Scp,
 				Roles: tt.fields.Roles,
 			}
 			if err := claims.Validate(tt.args.audience, tt.args.issuer, tt.args.allowedRoles, tt.args.matchAllRoles, tt.args.l); (err != nil) != tt.wantErr {
 				t.Errorf("Claims.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
+		})
+	}
+}
+
+func TestClaims_scopeToRoles(t *testing.T) {
+	type fields struct {
+		Scp   string
+		Roles []string
+	}
+	tests := []struct {
+		name          string
+		fields        fields
+		expectedRoles []string
+	}{
+		{
+			name: "test with scp",
+			fields: fields{
+				Scp:   "Test.Role.1",
+				Roles: []string{},
+			},
+			expectedRoles: []string{"Test.Role.1"},
+		},
+		{
+			name: "test with multiple scp",
+			fields: fields{
+				Scp:   "Test.Role.1 Test.Role.2",
+				Roles: []string{},
+			},
+			expectedRoles: []string{"Test.Role.1", "Test.Role.2"},
+		},
+		{
+			name: "test with existing roles",
+			fields: fields{
+				Scp:   "Test.Role.1 Test.Role.2",
+				Roles: []string{"Existing.Role"},
+			},
+			expectedRoles: []string{"Existing.Role"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			claims := &Claims{
+				Scp:   tt.fields.Scp,
+				Roles: tt.fields.Roles,
+			}
+			claims.scopeToRoles()
+			assert.ElementsMatch(t, tt.expectedRoles, claims.Roles)
 		})
 	}
 }
