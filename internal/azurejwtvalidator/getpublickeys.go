@@ -103,7 +103,7 @@ func (azjwt *AzureJwtValidator) getPublicKeys() error {
 				continue
 			}
 
-			rsakey.E = int(new(big.Int).SetBytes(b).Uint64())
+			rsakey.E = int(new(big.Int).SetBytes(b).Int64())
 			rsakeys[kid] = rsakey
 		}
 		if len(rsakeys) != 0 {

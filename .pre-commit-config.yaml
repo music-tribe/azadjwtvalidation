@@ -15,8 +15,7 @@ repos:
       alias: go-test
       args: [ make, ci_test, '--hook:env:_GO_TEST_SHORT=${GO_TEST_SHORT}' ]
     - id: go-vet-mod
-    # FIXME: uncomment and fix issues
-    # - id: go-sec-mod
-    #   args: [ -fmt=junit-xml, -out=results_junitxml_gosec.xml, -track-suppressions ]
+    - id: go-sec-mod
+      args: [ -fmt=junit-xml, -out=results_junitxml_gosec.xml, -track-suppressions ]
     - id: go-staticcheck-mod
       args: [-checks, "all, -ST1000, -ST1001, -ST1003, -ST1016, -ST1020, -ST1021, -ST1022"]
