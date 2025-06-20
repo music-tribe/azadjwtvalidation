@@ -30,11 +30,10 @@ jobs:
     - name: GoVet
       run: go vet ./...
 
-    # FIXME: uncomment and fix issues
-    # - name: Run Gosec Security Scanner
-    #   uses: securego/gosec@2.22.4
-    #   with:
-    #     args: ./...
+    - name: Run Gosec Security Scanner
+      uses: securego/gosec@v2.22.4
+      with:
+        args: ./...
 
     - name: Test
       run: make ci_test
