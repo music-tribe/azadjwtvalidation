@@ -68,7 +68,7 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 		return nil, err
 	}
 
-	go validator.ScheduleUpdateKeys(ctx, time.NewTicker(time.Duration(config.UpdateKeysEveryMinutes)*time.Minute))
+	validator.ScheduleUpdateKeysAsync(ctx)
 
 	plugin := &AzureJwtPlugin{
 		next:      next,
