@@ -20,7 +20,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
+func TestAzureJwtValidator_scheduleUpdateKeys(t *testing.T) {
 	t.Parallel()
 
 	t.Run("expect to return if context is done", func(t *testing.T) {
@@ -41,7 +41,7 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 		defer cancel()
 		ticker := time.NewTicker(time.Duration(azjwt.config.UpdateKeysEveryMinutes) * time.Minute)
 
-		azjwt.ScheduleUpdateKeys(ctx, ticker)
+		azjwt.scheduleUpdateKeys(ctx, ticker)
 	})
 
 	t.Run("expect to get public keys", func(t *testing.T) {
@@ -86,7 +86,7 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 		defer cancel()
 		ticker := time.NewTicker(100 * time.Millisecond)
 
-		azjwt.ScheduleUpdateKeys(ctx, ticker)
+		azjwt.scheduleUpdateKeys(ctx, ticker)
 		assert.True(t, azjwt.rsakeys.Len() > 0, "expected public keys to be loaded")
 	})
 
@@ -114,13 +114,13 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 
 		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").AnyTimes()
 		ml.EXPECT().Warn("failed to get public keys after 0 retries: failed to retrieve keys. Response: , Body: ").AnyTimes()
-		ml.EXPECT().Warn("ScheduleUpdateKeys: failed to retrieve keys. Response: , Body: ").AnyTimes()
+		ml.EXPECT().Warn("scheduleUpdateKeys: failed to retrieve keys. Response: , Body: ").AnyTimes()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 		defer cancel()
 		ticker := time.NewTicker(100 * time.Millisecond)
 
-		azjwt.ScheduleUpdateKeys(ctx, ticker)
+		azjwt.scheduleUpdateKeys(ctx, ticker)
 		assert.True(t, azjwt.rsakeys.Len() == 0, "expected no public keys to be loaded")
 	})
 
@@ -149,19 +149,19 @@ func TestAzureJwtValidator_ScheduleUpdateKeys(t *testing.T) {
 
 		ml.EXPECT().Warn(gomock.Any()).AnyTimes()
 		ml.EXPECT().Warn(gomock.Any()).AnyTimes()
-		ml.EXPECT().Warn("ScheduleUpdateKeys: failed to get public keys after 1 retries: failed to retrieve keys. Response: , Body: ").AnyTimes()
+		ml.EXPECT().Warn("scheduleUpdateKeys: failed to get public keys after 1 retries: failed to retrieve keys. Response: , Body: ").AnyTimes()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 900*time.Millisecond)
 		defer cancel()
 		ticker := time.NewTicker(500 * time.Millisecond)
 
-		azjwt.ScheduleUpdateKeys(ctx, ticker)
+		azjwt.scheduleUpdateKeys(ctx, ticker)
 		assert.True(t, azjwt.rsakeys.Len() == 0, "expected no public keys to be loaded")
 	})
 }
 
 // Test we preserve public keys whilst periodically updating them so that token validation does not fail with 403s due to missing keys.
-func TestAzureJwtValidator_ScheduleUpdateKeysPreservesRsaKeys(t *testing.T) {
+func TestAzureJwtValidator_scheduleUpdateKeysPreservesRsaKeys(t *testing.T) {
 	t.Parallel()
 
 	t.Run("should not drop public keys during key updates", func(t *testing.T) {
@@ -228,11 +228,11 @@ func TestAzureJwtValidator_ScheduleUpdateKeysPreservesRsaKeys(t *testing.T) {
 		go server.Serve(ln)
 		defer server.Close()
 
-		// Start ScheduleUpdateKeys in background
+		// Start scheduleUpdateKeys in background
 		ctx, cancel := context.WithCancel(context.Background())
 		ticker := time.NewTicker(50 * time.Millisecond)
 		defer ticker.Stop()
-		go azjwt.ScheduleUpdateKeys(ctx, ticker)
+		go azjwt.scheduleUpdateKeys(ctx, ticker)
 
 		// Generate a valid JWT signed with the private key
 		token := generateTestJwt(t,
@@ -324,11 +324,11 @@ func TestAzureJwtValidator_ScheduleUpdateKeysPreservesRsaKeys(t *testing.T) {
 		go server.Serve(ln)
 		defer server.Close()
 
-		// Start ScheduleUpdateKeys in background
+		// Start scheduleUpdateKeys in background
 		ctx, cancel := context.WithCancel(context.Background())
 		ticker := time.NewTicker(50 * time.Millisecond)
 		defer ticker.Stop()
-		go azjwt.ScheduleUpdateKeys(ctx, ticker)
+		go azjwt.scheduleUpdateKeys(ctx, ticker)
 
 		// Generate an invalid JWT (e.g., with wrong audience)
 		token := generateTestJwt(t,
