@@ -168,6 +168,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 			},
 			l)
 
+		l.EXPECT().Debug("Fetching public keys from: https://jwks.keys")
 		l.EXPECT().Warn("failed to load public key from:https://jwks.keys")
 
 		err := azureJwtValidator.getPublicKeys()
@@ -190,6 +191,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 			},
 			l)
 
+		l.EXPECT().Debug("Fetching public keys from: https://jwks.keys")
 		l.EXPECT().Warn("failed to read response body from:https://jwks.keys")
 
 		err := azureJwtValidator.getPublicKeys()
@@ -213,6 +215,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 			},
 			l)
 
+		l.EXPECT().Debug("Fetching public keys from: https://jwks.keys")
 		l.EXPECT().Warn(fmt.Sprintf("failed to retrieve keys. Response: %s, Body: %s", "Forbidden", "test"))
 
 		err := azureJwtValidator.getPublicKeys()
@@ -235,6 +238,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 			},
 			l)
 
+		l.EXPECT().Debug("Fetching public keys from: https://jwks.keys")
 		l.EXPECT().Warn("failed to unmarshal public keys: invalid character 'e' in literal true (expecting 'r'). Response: , Body: test")
 
 		err := azureJwtValidator.getPublicKeys()
@@ -263,6 +267,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 			},
 			l)
 
+		l.EXPECT().Debug("Fetching public keys from: https://jwks.keys")
 		l.EXPECT().Warn("failed to load public key. No keys found from:https://jwks.keys")
 
 		err = azureJwtValidator.getPublicKeys()
@@ -299,6 +304,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 			},
 			l)
 
+		l.EXPECT().Debug("Fetching public keys from: https://jwks.keys")
 		l.EXPECT().Warn("Error parsing key E:illegal base64 data at input byte 7")
 
 		err = azureJwtValidator.getPublicKeys()
@@ -336,6 +342,7 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 			},
 			l)
 
+		l.EXPECT().Debug("Fetching public keys from: https://jwks.keys")
 		l.EXPECT().Warn("Error decoding key N:illegal base64 data at input byte 3")
 
 		err = azureJwtValidator.getPublicKeys()
@@ -372,6 +379,8 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 					nil),
 			},
 			l)
+
+		l.EXPECT().Debug("Fetching public keys from: https://jwks.keys")
 
 		err = azureJwtValidator.getPublicKeys()
 		assert.NoError(t, err)
@@ -421,6 +430,8 @@ func TestAzureJwtValidator_GetPublicKeys(t *testing.T) {
 			},
 			l)
 
+		l.EXPECT().Debug("Fetching public keys from: https://jwks.keys")
+
 		err = azureJwtValidator.getPublicKeys()
 		assert.NoError(t, err)
 		assert.True(t, azureJwtValidator.rsakeys.Len() > 0, "expected public keys to be loaded")
@@ -462,6 +473,7 @@ func TestAzureJwtValidator_getPublicKeysWithBackoffRetry(t *testing.T) {
 			rsakeys: NewPublicKeys(),
 		}
 
+		ml.EXPECT().Debug("Fetching public keys from: https://login.microsoftonline.com/common/discovery/v2.0/keys").Times(4)
 		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(4)
 
 		err := azjwt.getPublicKeysWithBackoffRetry(context.TODO())
@@ -492,6 +504,8 @@ func TestAzureJwtValidator_getPublicKeysWithBackoffRetry(t *testing.T) {
 			logger:  ml,
 			rsakeys: NewPublicKeys(),
 		}
+
+		ml.EXPECT().Debug("Fetching public keys from: https://login.microsoftonline.com/common/discovery/v2.0/keys").Times(1)
 
 		// Expect to not even get to retry because the context will be done immediately
 		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(1)
@@ -528,6 +542,7 @@ func TestAzureJwtValidator_GetPublicKeysWithOptionalBackoffRetry(t *testing.T) {
 			rsakeys: NewPublicKeys(),
 		}
 
+		ml.EXPECT().Debug("Fetching public keys from: https://jwks.keys").Times(4)
 		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(4)
 		ml.EXPECT().Warn("failed to get public keys after 3 retries: failed to retrieve keys. Response: , Body: ").Times(1)
 
@@ -557,6 +572,7 @@ func TestAzureJwtValidator_GetPublicKeysWithOptionalBackoffRetry(t *testing.T) {
 			rsakeys: NewPublicKeys(),
 		}
 
+		ml.EXPECT().Debug("Fetching public keys from: https://jwks.keys").Times(1)
 		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").Times(1)
 		ml.EXPECT().Warn("failed to get public keys after 0 retries: failed to retrieve keys. Response: , Body: ").Times(1)
 
