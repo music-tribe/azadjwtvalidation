@@ -112,6 +112,7 @@ func TestAzureJwtValidator_scheduleUpdateKeys(t *testing.T) {
 			rsakeys: NewPublicKeys(),
 		}
 
+		ml.EXPECT().Debug("Fetching public keys from: https://jwks.keys").AnyTimes()
 		ml.EXPECT().Warn("failed to retrieve keys. Response: , Body: ").AnyTimes()
 		ml.EXPECT().Warn("failed to get public keys after 0 retries: failed to retrieve keys. Response: , Body: ").AnyTimes()
 		ml.EXPECT().Warn("scheduleUpdateKeys: failed to retrieve keys. Response: , Body: ").AnyTimes()
@@ -147,6 +148,7 @@ func TestAzureJwtValidator_scheduleUpdateKeys(t *testing.T) {
 			rsakeys: NewPublicKeys(),
 		}
 
+		ml.EXPECT().Debug("Fetching public keys from: https://jwks.keys").AnyTimes()
 		ml.EXPECT().Warn(gomock.Any()).AnyTimes()
 		ml.EXPECT().Warn(gomock.Any()).AnyTimes()
 		ml.EXPECT().Warn("scheduleUpdateKeys: failed to get public keys after 1 retries: failed to retrieve keys. Response: , Body: ").AnyTimes()

@@ -49,6 +49,8 @@ func (azjwt *AzureJwtValidator) getPublicKeys() error {
 	}
 
 	if strings.TrimSpace(azjwt.config.KeysUrl) != "" {
+		azjwt.logger.Debug(fmt.Sprintf("Fetching public keys from: %s", azjwt.config.KeysUrl))
+
 		var body jwtmodels.JWKSet
 		resp, err := azjwt.client.Get(azjwt.config.KeysUrl)
 
