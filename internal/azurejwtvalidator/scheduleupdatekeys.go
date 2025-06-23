@@ -8,6 +8,10 @@ import (
 
 // ScheduleUpdateKeysAsync starts a goroutine that periodically updates the public keys used for JWT validation.
 func (azjwt *AzureJwtValidator) ScheduleUpdateKeysAsync(ctx context.Context) {
+	if azjwt.config.KeysUrl == "" {
+		azjwt.logger.Info("No KeysUrl provided, skipping periodic key updates")
+		return
+	}
 	azjwt.logger.Info(fmt.Sprintf("Scheduling periodic update of public keys every %d minutes", azjwt.config.UpdateKeysEveryMinutes))
 	go azjwt.scheduleUpdateKeys(ctx, time.NewTicker(time.Duration(azjwt.config.UpdateKeysEveryMinutes)*time.Minute))
 }
